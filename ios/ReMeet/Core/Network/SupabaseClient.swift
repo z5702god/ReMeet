@@ -1,0 +1,291 @@
+import Foundation
+import Supabase
+
+/// Shared Supabase client instance
+/// Handles all communication with Supabase backend
+@MainActor
+class SupabaseClient: ObservableObject {
+
+    // MARK: - Singleton
+
+    static let shared = SupabaseClient()
+
+    // MARK: - Properties
+
+    /// Supabase client instance
+    let client: SupabaseClient
+
+    /// Current authenticated user
+    @Published var currentUser: User?
+
+    /// Authentication state
+    @Published var isAuthenticated = false
+
+    // MARK: - Initialization
+
+    private init() {
+        // Initialize Supabase client
+        self.client = SupabaseClient(
+            supabaseURL: SupabaseConfig.supabaseURL,
+            supabaseKey: SupabaseConfig.supabaseAnonKey
+        )
+
+        // Setup auth state listener
+        Task {
+            await setupAuthStateListener()
+        }
+    }
+
+    // MARK: - Authentication State
+
+    /// Setup authentication state change listener
+    private func setupAuthStateListener() async {
+        // Listen for auth state changes
+        for await state in client.auth.authStateChanges {
+            switch state {
+            case .signedIn(let session):
+                self.isAuthenticated = true
+                await loadCurrentUser(session.user.id)
+
+            case .signedOut:
+                self.isAuthenticated = false
+                self.currentUser = nil
+
+            case .userUpdated(let session):
+                await loadCurrentUser(session.user.id)
+
+            default:
+                break
+            }
+        }
+    }
+
+    /// Load current user from database
+    private func loadCurrentUser(_ userId: UUID) async {
+        do {
+            let user: User = try await client
+                .from("users")
+                .select()
+                .eq("id", value: userId.uuidString)
+                .single()
+                .execute()
+                .value
+
+            self.currentUser = user
+        } catch {
+            print("❌ Error loading user: \(error)")
+        }
+    }
+
+    // MARK: - Authentication Methods
+
+    /// Sign up with email and password
+    func signUp(email: String, password: String, fullName: String) async throws -> AuthResponse {
+        let response = try await client.auth.signUp(
+            email: email,
+            password: password,
+            data: [
+                "full_name": .string(fullName)
+            ]
+        )
+        return response
+    }
+
+    /// Sign in with email and password
+    func signIn(email: String, password: String) async throws -> Session {
+        let session = try await client.auth.signIn(
+            email: email,
+            password: password
+        )
+        return session
+    }
+
+    /// Sign out current user
+    func signOut() async throws {
+        try await client.auth.signOut()
+    }
+
+    /// Send password reset email
+    func resetPassword(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
+    }
+
+    /// Update user password
+    func updatePassword(newPassword: String) async throws {
+        try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
+
+    // MARK: - Storage Methods
+
+    /// Upload business card image
+    func uploadBusinessCard(
+        image: Data,
+        fileName: String
+    ) async throws -> String {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        // File path: {user_id}/{filename}
+        let filePath = "\(userId.uuidString)/\(fileName)"
+
+        // Upload to storage
+        try await client.storage
+            .from(SupabaseConfig.businessCardsBucket)
+            .upload(
+                path: filePath,
+                file: image,
+                options: FileOptions(
+                    contentType: "image/jpeg"
+                )
+            )
+
+        // Get public URL
+        let url = try client.storage
+            .from(SupabaseConfig.businessCardsBucket)
+            .getPublicURL(path: filePath)
+
+        return url.absoluteString
+    }
+
+    /// Delete business card image
+    func deleteBusinessCard(filePath: String) async throws {
+        try await client.storage
+            .from(SupabaseConfig.businessCardsBucket)
+            .remove(paths: [filePath])
+    }
+
+    // MARK: - Database Methods
+
+    /// Fetch all contacts for current user
+    func fetchContacts() async throws -> [Contact] {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        let contacts: [Contact] = try await client
+            .from("contacts")
+            .select("""
+                *,
+                company:companies(*)
+            """)
+            .eq("user_id", value: userId.uuidString)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+
+        return contacts
+    }
+
+    /// Search contacts
+    func searchContacts(query: String) async throws -> [Contact] {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        // Use the search_contacts function we created in SQL
+        let result = try await client
+            .rpc("search_contacts", params: [
+                "search_query": query,
+                "user_uuid": userId.uuidString
+            ])
+            .execute()
+
+        return try JSONDecoder().decode([Contact].self, from: result.data)
+    }
+
+    /// Fetch companies grouped by contact count
+    func fetchCompanies() async throws -> [Company] {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        // Use the get_company_stats function
+        let result = try await client
+            .rpc("get_company_stats", params: [
+                "user_uuid": userId.uuidString
+            ])
+            .execute()
+
+        return try JSONDecoder().decode([Company].self, from: result.data)
+    }
+
+    /// Fetch meeting timeline
+    func fetchMeetingTimeline(
+        startDate: Date? = nil,
+        endDate: Date? = nil
+    ) async throws -> [MeetingContext] {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        var params: [String: Any] = ["user_uuid": userId.uuidString]
+
+        if let start = startDate {
+            let formatter = ISO8601DateFormatter()
+            params["start_date"] = formatter.string(from: start)
+        }
+
+        if let end = endDate {
+            let formatter = ISO8601DateFormatter()
+            params["end_date"] = formatter.string(from: end)
+        }
+
+        let result = try await client
+            .rpc("get_meeting_timeline", params: params)
+            .execute()
+
+        return try JSONDecoder().decode([MeetingContext].self, from: result.data)
+    }
+
+    /// Insert new contact
+    func createContact(_ contact: Contact) async throws -> Contact {
+        let created: Contact = try await client
+            .from("contacts")
+            .insert(contact)
+            .select()
+            .single()
+            .execute()
+            .value
+
+        return created
+    }
+
+    /// Update existing contact
+    func updateContact(_ contact: Contact) async throws {
+        try await client
+            .from("contacts")
+            .update(contact)
+            .eq("id", value: contact.id.uuidString)
+            .execute()
+    }
+
+    /// Delete contact
+    func deleteContact(id: UUID) async throws {
+        try await client
+            .from("contacts")
+            .delete()
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+}
+
+// MARK: - Error Handling
+
+extension SupabaseClient {
+    /// Convert Supabase error to user-friendly message
+    static func errorMessage(from error: Error) -> String {
+        // TODO: Parse specific Supabase errors
+        return error.localizedDescription
+    }
+}
