@@ -1,6 +1,6 @@
 # Re:Meet 專案進度總結
 
-## 📅 日期: 2026-01-10
+## 📅 日期: 2026-01-11
 
 ---
 
@@ -27,13 +27,13 @@
 - [x] 專案結構規劃 ([iOS_PROJECT_SETUP.md](iOS_PROJECT_SETUP.md))
 - [x] Supabase 整合程式碼
   - [x] SupabaseConfig.swift
-  - [x] SupabaseClient.swift
+  - [x] SupabaseClient.swift (已修正命名衝突 → SupabaseManager)
 - [x] 資料模型 (Models)
   - [x] User
   - [x] Contact
-  - [x] BusinessCard
-  - [x] Company
-  - [x] MeetingContext
+  - [x] BusinessCard (含 memberwise init)
+  - [x] Company (含 memberwise init)
+  - [x] MeetingContext (含 memberwise init)
 - [x] 認證功能
   - [x] LoginView
   - [x] RegisterView
@@ -44,23 +44,35 @@
   - [x] ContentView (auth routing)
   - [x] MainTabView (5 tabs)
 - [x] 首頁功能
-  - [x] HomeView
+  - [x] HomeView (含新增按鈕、滑動刪除、加入最愛)
   - [x] HomeViewModel
-  - [x] ContactDetailView
+  - [x] ContactDetailView (含名片照片、會面情境、快速動作)
   - [x] ContactRowView
   - [x] ProfileView
-- [x] 占位 Views
-  - [x] CompaniesListView
-  - [x] TimelineView
-  - [x] ChatView
-  - [x] CameraView
 
-### 4. Skills 整合
+### 4. Phase 1 MVP 功能 (NEW!)
+- [x] 新增聯絡人功能
+  - [x] AddContactView
+  - [x] AddContactViewModel
+  - [x] 公司搜尋/新增功能
+- [x] 相機拍照功能
+  - [x] CameraView (完整 AVFoundation 實作)
+  - [x] CameraViewModel
+  - [x] 相機預覽、拍照、重拍
+  - [x] 照片壓縮和上傳
+  - [x] AddContactWithImageView
+- [x] 會面情境記錄
+  - [x] MeetingContextInputView
+  - [x] MeetingContextView (獨立版本)
+  - [x] MeetingContextViewModel
+  - [x] OccasionType 和 RelationshipType 枚舉
+
+### 5. Skills 整合
 - [x] frontend-design skill
 - [x] prd-writer skill
 - [x] 放置於 `.claude/skills/` 目錄
 
-### 5. 文件
+### 6. 文件
 - [x] PRD.md - 產品需求文件
 - [x] SUPABASE_SETUP.md - Supabase 設定指南
 - [x] AUTHENTICATION_SETUP.md - 認證設定指南
@@ -72,32 +84,17 @@
 
 ## 🚧 待完成（按優先順序）
 
-### Phase 1: MVP 基礎功能（2-3 週）
+### Phase 1: MVP 基礎功能 ✅ 程式碼已完成
 
-#### 1. iOS App 基礎整合
+#### 待測試項目
 - [ ] 在 Xcode 建立實際專案
 - [ ] 安裝 Supabase Swift SDK
 - [ ] 匯入所有程式碼檔案
 - [ ] 設定 Supabase API keys
 - [ ] 測試登入/註冊功能
-- [ ] 修正編譯錯誤（如果有）
-
-#### 2. 手動名片輸入功能
-- [ ] 建立「新增聯絡人」表單 View
-- [ ] 實作公司搜尋/新增功能
-- [ ] 整合 Supabase 儲存
-- [ ] 測試 CRUD 操作
-
-#### 3. 基礎相機功能
-- [ ] 實作 AVFoundation 相機
-- [ ] 拍照並預覽
-- [ ] 儲存照片到 Supabase Storage
-- [ ] 顯示上傳進度
-
-#### 4. 會面情境記錄（簡化版）
-- [ ] 建立表單輸入 View
-- [ ] 日期、地點、備註欄位
-- [ ] 儲存到 meeting_contexts table
+- [ ] 測試新增聯絡人功能
+- [ ] 測試相機拍照和上傳
+- [ ] 測試會面情境記錄
 
 ### Phase 2: n8n + OCR（3-4 週）
 
@@ -173,35 +170,53 @@
 
 ---
 
-## 🎯 近期目標
-
-### 本週目標
-1. 在 Xcode 建立實際專案
-2. 完成基礎認證功能測試
-3. 實作手動新增聯絡人功能
-
-### 下週目標
-1. 實作相機拍照功能
-2. 完成照片上傳到 Supabase
-3. 開始規劃 n8n workflows
-
----
-
 ## 📊 整體進度
 
 ```
 產品規劃:     ████████████████████ 100%
 後端設定:     ████████████████████ 100%
-iOS 架構:     ████████████████░░░░  80%
+iOS 架構:     ████████████████████ 100%
 認證功能:     ████████████████████ 100%
-基礎 UI:      ████████████████░░░░  80%
-相機功能:     ░░░░░░░░░░░░░░░░░░░░   0%
+基礎 UI:      ████████████████████ 100%
+相機功能:     ████████████████████ 100%  ← NEW!
+會面情境:     ████████████████████ 100%  ← NEW!
 OCR 整合:     ░░░░░░░░░░░░░░░░░░░░   0%
 AI Agent:     ░░░░░░░░░░░░░░░░░░░░   0%
 進階功能:     ░░░░░░░░░░░░░░░░░░░░   0%
 
-總體進度:     ██████████░░░░░░░░░░  50%
+總體進度:     ██████████████░░░░░░  70%
 ```
+
+---
+
+## 📝 新增檔案清單 (2026-01-11)
+
+### 新增的 Swift 檔案
+```
+ios/ReMeet/Features/
+├── Contacts/
+│   ├── Views/
+│   │   └── AddContactView.swift         ← NEW
+│   └── ViewModels/
+│       └── AddContactViewModel.swift    ← NEW
+├── Camera/
+│   └── ViewModels/
+│       └── CameraViewModel.swift        ← NEW
+└── MeetingContext/
+    ├── Views/
+    │   └── MeetingContextInputView.swift ← NEW
+    └── ViewModels/
+        └── MeetingContextViewModel.swift ← NEW
+```
+
+### 修改的檔案
+- `ios/ReMeet/Core/Network/SupabaseClient.swift` - 修正命名衝突，加入新方法
+- `ios/ReMeet/Core/Models/Company.swift` - 加入 memberwise init
+- `ios/ReMeet/Core/Models/BusinessCard.swift` - 加入 memberwise init
+- `ios/ReMeet/Core/Models/MeetingContext.swift` - 加入 memberwise init
+- `ios/ReMeet/Features/Home/Views/HomeView.swift` - 加入新增按鈕、滑動刪除
+- `ios/ReMeet/Features/Camera/Views/CameraView.swift` - 完整相機實作
+- `ios/ReMeet/Features/Contacts/Views/ContactDetailView.swift` - 增強功能
 
 ---
 
@@ -210,7 +225,7 @@ AI Agent:     ░░░░░░░░░░░░░░░░░░░░   0%
 ### 需要改進
 1. **錯誤處理**: 目前錯誤處理較簡單，需要更完善的錯誤訊息和重試機制
 2. **離線支援**: 目前沒有離線快取，需要實作本地 SQLite
-3. **圖片優化**: 上傳前需要壓縮圖片以節省流量
+3. **圖片優化**: 上傳前已有壓縮（80% JPEG），可考慮更激進的壓縮
 4. **測試**: 需要加入單元測試和 UI 測試
 
 ### 已知限制
@@ -218,59 +233,33 @@ AI Agent:     ░░░░░░░░░░░░░░░░░░░░   0%
 2. **OCR 語言**: 目前規劃只支援英文和中文
 3. **AI 成本**: OpenAI API 有使用成本，需要監控
 
----
-
-## 📝 檔案清單
-
-### 文件
-- `PRD.md` - 產品需求文件
-- `iOS_PROJECT_SETUP.md` - iOS 專案設定指南
-- `SUPABASE_SETUP.md` - Supabase 設定指南
-- `AUTHENTICATION_SETUP.md` - 認證設定指南
-- `PROJECT_STATUS.md` - 專案進度（本文件）
-
-### SQL
-- `supabase-schema.sql` - 完整資料庫 schema
-- `storage-policies.sql` - Storage RLS policies
-
-### iOS 程式碼
-- `ios/ReMeet/` - 所有 iOS app 程式碼
-- `ios/README.md` - iOS 程式碼說明
-
-### Skills
-- `.claude/skills/frontend-design/` - 前端設計 skill
-- `.claude/skills/prd-writer/` - PRD 撰寫 skill
+### 待驗證
+1. Supabase Swift SDK 版本相容性
+2. AVFoundation 權限設定（需在 Info.plist 加入 Camera Usage Description）
+3. SupabaseManager 與現有程式碼的整合
 
 ---
 
-## 🚀 開始開發
+## 🚀 下一步
 
-請依照以下順序開始：
-
-1. **閱讀文件**
-   - [iOS_PROJECT_SETUP.md](iOS_PROJECT_SETUP.md) - 了解如何建立專案
-   - [ios/README.md](ios/README.md) - 了解程式碼結構
-
-2. **設定 Xcode 專案**
+1. **在 Xcode 建立專案**
    - 建立新專案
-   - 安裝 Supabase SDK
-   - 匯入程式碼
+   - 安裝 Supabase SDK (https://github.com/supabase/supabase-swift)
+   - 匯入所有程式碼
 
-3. **設定 Supabase**
-   - 確認資料庫已建立
-   - 取得 API keys
-   - 在 iOS app 設定憑證
+2. **設定 API Keys**
+   - 在 SupabaseConfig.swift 填入實際的 Supabase URL 和 Anon Key
 
-4. **測試基礎功能**
-   - 執行 app
-   - 測試登入/註冊
-   - 確認可以連接 Supabase
+3. **加入 Info.plist 權限**
+   ```xml
+   <key>NSCameraUsageDescription</key>
+   <string>ReMeet needs camera access to scan business cards</string>
+   ```
 
-5. **開始開發新功能**
-   - 從 Phase 1 的任務開始
-   - 逐步完成每個功能
+4. **測試完整流程**
+   - 登入 → 拍照 → 輸入資訊 → 記錄情境 → 查看聯絡人
 
 ---
 
-**最後更新**: 2026-01-10
-**下次更新**: 完成 Phase 1 MVP 後
+**最後更新**: 2026-01-11
+**下次更新**: 完成 Xcode 專案建立和測試後

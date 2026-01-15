@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject var supabase: SupabaseClient
     @StateObject private var viewModel = HomeViewModel()
     @State private var showProfile = false
+    @State private var showAddContact = false
 
     var body: some View {
         NavigationView {
@@ -19,6 +20,15 @@ struct HomeView: View {
             }
             .navigationTitle("Business Cards")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showAddContact = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title3)
+                    }
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showProfile = true
@@ -30,6 +40,13 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showProfile) {
                 ProfileView()
+            }
+            .sheet(isPresented: $showAddContact) {
+                AddContactView {
+                    Task {
+                        await viewModel.loadContacts()
+                    }
+                }
             }
             .refreshable {
                 await viewModel.loadContacts()
@@ -116,6 +133,28 @@ struct HomeView: View {
                         ContactDetailView(contact: contact)
                     } label: {
                         ContactRowView(contact: contact)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.deleteContact(contact)
+                            }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            Task {
+                                await viewModel.toggleFavorite(contact)
+                            }
+                        } label: {
+                            Label(
+                                contact.isFavorite ? "Unfavorite" : "Favorite",
+                                systemImage: contact.isFavorite ? "star.slash" : "star.fill"
+                            )
+                        }
+                        .tint(.yellow)
                     }
                 }
             }
