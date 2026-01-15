@@ -12,6 +12,10 @@ private-key.json
 ios/ReMeet/Config.xcconfig
 Config.xcconfig
 
+# Firebase
+GoogleService-Info.plist
+firebase-debug.log
+
 # Xcode
 .DS_Store
 *.xcodeproj/*
