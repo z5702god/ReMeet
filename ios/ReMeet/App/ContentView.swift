@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
 
-    @EnvironmentObject var supabase: SupabaseClient
+    @Environment(SupabaseManager.self) var supabase
 
     var body: some View {
         Group {
@@ -70,7 +70,7 @@ struct MainTabView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-            .environmentObject(SupabaseClient.shared)
+            .environment(SupabaseClient.shared)
     }
 }
 #endif

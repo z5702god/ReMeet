@@ -2,40 +2,57 @@ import Foundation
 
 /// Supabase configuration
 ///
-/// ⚠️ IMPORTANT: Do not commit actual API keys to version control
-/// Use environment variables or xcconfig files instead
+/// Configuration is loaded from Info.plist which reads from Config.xcconfig
+/// Setup: Copy Config.xcconfig.example to Config.xcconfig and add your API keys
 enum SupabaseConfig {
+
+    // MARK: - Configuration Errors
+
+    enum ConfigError: LocalizedError {
+        case missingSupabaseURL
+        case missingSupabaseKey
+        case missingGoogleVisionKey
+        case invalidURL(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .missingSupabaseURL:
+                return "SUPABASE_URL not configured. Please check Config.xcconfig"
+            case .missingSupabaseKey:
+                return "SUPABASE_ANON_KEY not configured. Please check Config.xcconfig"
+            case .missingGoogleVisionKey:
+                return "GOOGLE_CLOUD_VISION_API_KEY not configured. Please check Config.xcconfig"
+            case .invalidURL(let url):
+                return "Invalid URL format: \(url)"
+            }
+        }
+    }
 
     // MARK: - Configuration
 
     /// Supabase project URL
-    /// Get this from: Supabase Dashboard → Settings → API
+    /// Loaded from Info.plist → SUPABASE_URL
     static var supabaseURL: URL {
-        // Method 1: From Info.plist (recommended for production)
-        if let urlString = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-           let url = URL(string: urlString) {
-            return url
+        guard let urlString = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+              !urlString.isEmpty else {
+            fatalError(ConfigError.missingSupabaseURL.localizedDescription)
         }
 
-        // Method 2: Hardcoded (for development only)
-        // ⚠️ Replace with your actual Supabase URL
-        guard let url = URL(string: "https://your-project-ref.supabase.co") else {
-            fatalError("Invalid Supabase URL")
+        guard let url = URL(string: urlString) else {
+            fatalError(ConfigError.invalidURL(urlString).localizedDescription)
         }
+
         return url
     }
 
     /// Supabase anon (public) API key
-    /// Get this from: Supabase Dashboard → Settings → API
+    /// Loaded from Info.plist → SUPABASE_ANON_KEY
     static var supabaseAnonKey: String {
-        // Method 1: From Info.plist (recommended for production)
-        if let key = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String {
-            return key
+        guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
+              !key.isEmpty else {
+            fatalError(ConfigError.missingSupabaseKey.localizedDescription)
         }
-
-        // Method 2: Hardcoded (for development only)
-        // ⚠️ Replace with your actual anon key
-        return "your-anon-key-here"
+        return key
     }
 
     // MARK: - Storage Configuration
@@ -45,45 +62,30 @@ enum SupabaseConfig {
 
     /// User avatars storage bucket name
     static let avatarsBucket = "avatars"
+
+    // MARK: - n8n API Configuration
+
+    /// n8n Chat API endpoint
+    /// Loaded from Info.plist → N8N_CHAT_API_URL
+    static var n8nChatAPIURL: URL {
+        guard let urlString = Bundle.main.object(forInfoDictionaryKey: "N8N_CHAT_API_URL") as? String,
+              !urlString.isEmpty,
+              let url = URL(string: urlString) else {
+            // n8n is optional - return a placeholder that will fail gracefully
+            return URL(string: "https://n8n-not-configured.local")!
+        }
+        return url
+    }
+
+    // MARK: - Google Cloud Vision Configuration
+
+    /// Google Cloud Vision API Key
+    /// Loaded from Info.plist → GOOGLE_CLOUD_VISION_API_KEY
+    static var googleCloudVisionAPIKey: String {
+        guard let key = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_CLOUD_VISION_API_KEY") as? String,
+              !key.isEmpty else {
+            fatalError(ConfigError.missingGoogleVisionKey.localizedDescription)
+        }
+        return key
+    }
 }
-
-// MARK: - Setup Instructions
-
-/*
-
- ## Setup Instructions
-
- ### Option 1: Using Info.plist (Recommended)
-
- 1. Open Info.plist
- 2. Add the following keys:
-
-    <key>SUPABASE_URL</key>
-    <string>https://your-project-ref.supabase.co</string>
-    <key>SUPABASE_ANON_KEY</key>
-    <string>your-anon-key-here</string>
-
- 3. Make sure Info.plist is in .gitignore if you commit the keys
-
- ### Option 2: Using xcconfig file (Most Secure)
-
- 1. Create a new file: Config.xcconfig
- 2. Add to .gitignore
- 3. Add content:
-
-    SUPABASE_URL = https:/$()/your-project-ref.supabase.co
-    SUPABASE_ANON_KEY = your-anon-key-here
-
- 4. In Xcode project settings, set Config.xcconfig as the configuration file
- 5. Access in code via environment or Info.plist
-
- ### Getting Your Supabase Credentials
-
- 1. Go to https://app.supabase.com
- 2. Select your "Re:Meet" project
- 3. Click Settings → API
- 4. Copy:
-    - Project URL
-    - API Key (anon, public)
-
- */

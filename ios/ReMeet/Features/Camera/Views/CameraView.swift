@@ -1,213 +1,320 @@
 import SwiftUI
 import AVFoundation
+import PhotosUI
 
 struct CameraView: View {
 
-    @StateObject private var viewModel = CameraViewModel()
-    @State private var showAddContact = false
-    @State private var capturedImageUrl: String?
-    @State private var capturedImageData: Data?
+    @State private var viewModel = CameraViewModel()
+    @State private var showBatchEdit = false
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    @State private var showCardPreview = false
+
+    // Check if running on simulator
+    private var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
 
     var body: some View {
         NavigationView {
             ZStack {
-                if viewModel.permissionStatus == .authorized {
-                    if viewModel.isShowingPreview, let image = viewModel.capturedImage {
-                        // Preview captured image
-                        previewView(image: image)
-                    } else {
-                        // Camera view
-                        cameraView
-                    }
-                } else if viewModel.permissionStatus == .denied || viewModel.permissionStatus == .restricted {
+                AppColors.background.ignoresSafeArea()
+
+                if isSimulator {
+                    simulatorView
+                } else if viewModel.state.permissionStatus == .authorized {
+                    batchCameraView
+                } else if viewModel.state.permissionStatus == .denied || viewModel.state.permissionStatus == .restricted {
                     permissionDeniedView
                 } else {
-                    // Loading / requesting permission
-                    ProgressView("Requesting camera access...")
+                    VStack(spacing: AppSpacing.md) {
+                        ProgressView()
+                        Text("Requesting camera access...")
+                            .font(AppTypography.subheadline)
+                            .foregroundColor(AppColors.textSecondary)
+                    }
                 }
             }
-            .navigationTitle("Scan Card")
+            .navigationTitle("Scan Cards")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !viewModel.state.capturedCards.isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showBatchEdit = true
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundColor(AppColors.accentPurple)
+                    }
+                }
+            }
             .onAppear {
-                viewModel.startSession()
+                if !isSimulator {
+                    viewModel.startSession()
+                }
             }
             .onDisappear {
-                viewModel.stopSession()
-            }
-            .sheet(isPresented: $showAddContact) {
-                AddContactWithImageView(
-                    imageUrl: capturedImageUrl,
-                    imageData: capturedImageData
-                ) {
-                    // Reset after saving
-                    viewModel.retakePhoto()
-                    capturedImageUrl = nil
-                    capturedImageData = nil
+                if !isSimulator {
+                    viewModel.stopSession()
                 }
             }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            .fullScreenCover(isPresented: $showBatchEdit) {
+                BatchEditView(
+                    cards: viewModel.finishBatch(),
+                    onComplete: {
+                        viewModel.clearBatch()
+                        showBatchEdit = false
+                    }
+                )
+            }
+            .sheet(isPresented: $showCardPreview) {
+                if let card = viewModel.state.selectedCardForPreview {
+                    CardPreviewSheet(
+                        card: card,
+                        onDelete: {
+                            viewModel.removeFromBatch(id: card.id)
+                            showCardPreview = false
+                        },
+                        onDismiss: {
+                            showCardPreview = false
+                        }
+                    )
+                }
+            }
+            .onChange(of: selectedPhotoItems) { _, newItems in
+                Task {
+                    for item in newItems {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            viewModel.addImageToBatch(image)
+                        }
+                    }
+                    selectedPhotoItems = []
+                }
+            }
+            .alert("Error", isPresented: .constant(viewModel.state.errorMessage != nil)) {
                 Button("OK") {
-                    viewModel.errorMessage = nil
+                    viewModel.state.errorMessage = nil
                 }
             } message: {
-                Text(viewModel.errorMessage ?? "")
+                Text(viewModel.state.errorMessage ?? "")
             }
         }
     }
 
-    // MARK: - Camera View
+    // MARK: - Simulator View
 
-    private var cameraView: some View {
+    private var simulatorView: some View {
+        VStack(spacing: 0) {
+            // Main area
+            VStack(spacing: AppSpacing.lg) {
+                Spacer()
+
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 80))
+                    .foregroundColor(AppColors.textSecondary)
+
+                Text("Camera not available in Simulator")
+                    .font(AppTypography.headline)
+                    .foregroundColor(AppColors.textSecondary)
+
+                Text("Select photos to test batch scanning")
+                    .font(AppTypography.subheadline)
+                    .foregroundColor(AppColors.textSecondary)
+
+                PhotosPicker(
+                    selection: $selectedPhotoItems,
+                    maxSelectionCount: 10,
+                    matching: .images
+                ) {
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                        Text("Choose Photos")
+                    }
+                    .font(AppTypography.headline)
+                    .padding()
+                    .background(AppColors.accentBlue)
+                    .foregroundColor(.white)
+                    .cornerRadius(AppCornerRadius.medium)
+                }
+
+                Spacer()
+            }
+
+            // Thumbnail strip
+            if !viewModel.state.capturedCards.isEmpty {
+                thumbnailStrip
+                    .background(AppColors.cardBackground)
+            }
+        }
+    }
+
+    // MARK: - Batch Camera View
+
+    private var batchCameraView: some View {
         GeometryReader { geometry in
             ZStack {
                 // Camera preview
                 CameraPreviewView(session: viewModel.session)
                     .ignoresSafeArea()
 
-                // Card frame overlay
-                VStack {
+                VStack(spacing: 0) {
                     Spacer()
 
                     // Card frame guide
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: AppCornerRadius.medium)
                         .stroke(Color.white, lineWidth: 2)
                         .frame(
                             width: geometry.size.width * 0.85,
-                            height: geometry.size.width * 0.85 * 0.6 // Standard card ratio
+                            height: geometry.size.width * 0.85 * 0.6
                         )
                         .overlay(
                             Text("Align business card within frame")
-                                .font(.caption)
+                                .font(AppTypography.caption)
                                 .foregroundColor(.white)
-                                .padding(8)
+                                .padding(AppSpacing.sm)
                                 .background(Color.black.opacity(0.5))
-                                .cornerRadius(8)
+                                .cornerRadius(AppCornerRadius.small)
                                 .offset(y: -60)
                         )
 
                     Spacer()
 
-                    // Controls
-                    HStack(spacing: 60) {
-                        // Flash button
-                        Button {
-                            viewModel.toggleFlash()
-                        } label: {
-                            Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .frame(width: 50, height: 50)
-                                .background(Color.black.opacity(0.5))
-                                .clipShape(Circle())
-                        }
-
-                        // Capture button
-                        Button {
-                            viewModel.capturePhoto()
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .stroke(Color.white, lineWidth: 4)
-                                    .frame(width: 70, height: 70)
-
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 60, height: 60)
-                            }
-                        }
-
-                        // Placeholder for symmetry
-                        Color.clear
-                            .frame(width: 50, height: 50)
+                    // Thumbnail strip
+                    if !viewModel.state.capturedCards.isEmpty {
+                        thumbnailStrip
+                            .background(Color.black.opacity(0.7))
                     }
-                    .padding(.bottom, 40)
+
+                    // Controls
+                    controlsBar
+                        .background(Color.black.opacity(0.7))
                 }
             }
         }
     }
 
-    // MARK: - Preview View
+    // MARK: - Thumbnail Strip
 
-    private func previewView(image: UIImage) -> some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+    private var thumbnailStrip: some View {
+        VStack(spacing: AppSpacing.sm) {
+            // Count indicator
+            HStack {
+                Image(systemName: "rectangle.stack.fill")
+                    .foregroundColor(.white)
+                Text("\(viewModel.state.capturedCards.count) card\(viewModel.state.capturedCards.count == 1 ? "" : "s") scanned")
+                    .font(AppTypography.caption)
+                    .foregroundColor(.white)
+                Spacer()
 
-            VStack {
-                // Image preview
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding()
-
-                if viewModel.isUploading {
-                    // Upload progress
-                    VStack(spacing: 12) {
-                        ProgressView(value: viewModel.uploadProgress)
-                            .progressViewStyle(LinearProgressViewStyle())
-                            .frame(width: 200)
-
-                        Text("Uploading...")
-                            .foregroundColor(.white)
+                if viewModel.state.capturedCards.count > 1 {
+                    Button("Clear All") {
+                        viewModel.clearBatch()
                     }
-                    .padding()
-                } else {
-                    // Action buttons
-                    HStack(spacing: 40) {
-                        // Retake
-                        Button {
-                            viewModel.retakePhoto()
-                        } label: {
-                            VStack {
-                                Image(systemName: "arrow.counterclockwise")
-                                    .font(.title2)
-                                Text("Retake")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.white)
-                            .padding()
-                        }
-
-                        // Use Photo
-                        Button {
-                            Task {
-                                if let result = await viewModel.usePhoto() {
-                                    capturedImageUrl = result.imageUrl
-                                    capturedImageData = result.imageData
-                                    showAddContact = true
-                                }
-                            }
-                        } label: {
-                            VStack {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.title2)
-                                Text("Use Photo")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.green)
-                            .padding()
-                        }
-                    }
-                    .padding(.bottom, 40)
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.accentRed)
                 }
             }
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.top, AppSpacing.sm)
+
+            // Thumbnails
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppSpacing.md) {
+                    ForEach(viewModel.state.capturedCards) { card in
+                        CardThumbnail(card: card) {
+                            viewModel.state.selectedCardForPreview = card
+                            showCardPreview = true
+                        }
+                    }
+                }
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.bottom, AppSpacing.md)
+            }
         }
+    }
+
+    // MARK: - Controls Bar
+
+    private var controlsBar: some View {
+        HStack(spacing: 40) {
+            // Flash button
+            Button {
+                viewModel.toggleFlash()
+            } label: {
+                Image(systemName: viewModel.isFlashOn ? "bolt.fill" : "bolt.slash")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .frame(width: 50, height: 50)
+                    .background(Color.white.opacity(0.2))
+                    .clipShape(Circle())
+            }
+
+            // Capture button
+            Button {
+                viewModel.capturePhoto()
+            } label: {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white, lineWidth: 4)
+                        .frame(width: 70, height: 70)
+
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 60, height: 60)
+
+                    // Badge for count
+                    if !viewModel.state.capturedCards.isEmpty {
+                        Text("\(viewModel.state.capturedCards.count)")
+                            .font(AppTypography.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(width: 24, height: 24)
+                            .background(AppColors.accentBlue)
+                            .clipShape(Circle())
+                            .offset(x: 25, y: -25)
+                    }
+                }
+            }
+
+            // Done button or placeholder
+            if !viewModel.state.capturedCards.isEmpty {
+                Button {
+                    showBatchEdit = true
+                } label: {
+                    Text("Done")
+                        .font(AppTypography.headline)
+                        .foregroundColor(.white)
+                        .frame(width: 60, height: 50)
+                        .background(AppColors.accentBlue)
+                        .cornerRadius(AppCornerRadius.medium)
+                }
+            } else {
+                Color.clear
+                    .frame(width: 50, height: 50)
+            }
+        }
+        .padding(.vertical, AppSpacing.lg)
     }
 
     // MARK: - Permission Denied View
 
     private var permissionDeniedView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: AppSpacing.lg) {
             Image(systemName: "camera.fill")
                 .font(.system(size: 60))
-                .foregroundColor(.gray)
+                .foregroundColor(AppColors.textSecondary)
 
             Text("Camera Access Required")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(AppTypography.title2)
+                .foregroundColor(AppColors.textPrimary)
 
             Text("Please enable camera access in Settings to scan business cards.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(AppTypography.subheadline)
+                .foregroundColor(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -217,12 +324,88 @@ struct CameraView: View {
                 }
             } label: {
                 Text("Open Settings")
+                    .font(AppTypography.headline)
                     .padding()
-                    .background(Color.blue)
+                    .background(AppColors.accentBlue)
                     .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .cornerRadius(AppCornerRadius.medium)
             }
-            .padding(.top, 20)
+            .padding(.top, AppSpacing.lg)
+        }
+    }
+}
+
+// MARK: - Card Thumbnail
+
+struct CardThumbnail: View {
+
+    let card: CapturedCard
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            Image(uiImage: card.image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 80, height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.small))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppCornerRadius.small)
+                        .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                )
+        }
+    }
+}
+
+// MARK: - Card Preview Sheet
+
+struct CardPreviewSheet: View {
+
+    let card: CapturedCard
+    let onDelete: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AppColors.background.ignoresSafeArea()
+
+                VStack {
+                    Image(uiImage: card.image)
+                        .resizable()
+                        .scaledToFit()
+                        .cornerRadius(AppCornerRadius.medium)
+                        .padding(AppSpacing.md)
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        HStack(spacing: AppSpacing.sm) {
+                            Image(systemName: "trash")
+                            Text("Remove this card")
+                        }
+                        .font(AppTypography.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(AppColors.accentRed.opacity(0.1))
+                        .foregroundColor(AppColors.accentRed)
+                        .cornerRadius(AppCornerRadius.medium)
+                    }
+                    .padding(AppSpacing.md)
+                }
+            }
+            .navigationTitle("Card Preview")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        onDismiss()
+                    }
+                    .foregroundColor(AppColors.accentPurple)
+                }
+            }
         }
     }
 }
@@ -257,7 +440,7 @@ struct CameraPreviewView: UIViewRepresentable {
     }
 }
 
-// MARK: - Add Contact With Image View
+// MARK: - Add Contact With Image View (for batch edit)
 
 struct AddContactWithImageView: View {
 
@@ -266,72 +449,109 @@ struct AddContactWithImageView: View {
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AddContactViewModel()
+    @State private var viewModel = AddContactViewModel()
     @State private var showMeetingContext = false
+    @State private var isScanning = false
+    @State private var scanError: String?
+    @State private var croppedImage: UIImage?
 
     var body: some View {
         NavigationView {
-            Form {
-                // Business card image preview
-                if let data = imageData, let uiImage = UIImage(data: data) {
-                    Section {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 200)
-                            .cornerRadius(8)
-                    }
-                }
+            ZStack {
+                AppColors.background.ignoresSafeArea()
 
-                // Basic Info Section
-                Section("Contact Information") {
-                    TextField("Full Name *", text: $viewModel.fullName)
-                        .textContentType(.name)
-                        .autocapitalization(.words)
-
-                    TextField("Job Title", text: $viewModel.title)
-                        .textContentType(.jobTitle)
-
-                    TextField("Company", text: $viewModel.companyName)
-                        .textContentType(.organizationName)
-                }
-
-                // Contact Details Section
-                Section("Contact Details") {
-                    HStack {
-                        Image(systemName: "phone")
-                            .foregroundColor(.gray)
-                            .frame(width: 24)
-                        TextField("Phone", text: $viewModel.phone)
-                            .textContentType(.telephoneNumber)
-                            .keyboardType(.phonePad)
+                Form {
+                    // Business card image preview
+                    if let image = displayImage {
+                        Section {
+                            HStack {
+                                Spacer()
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxHeight: 200)
+                                    .cornerRadius(AppCornerRadius.small)
+                                Spacer()
+                            }
+                        }
                     }
 
-                    HStack {
-                        Image(systemName: "envelope")
-                            .foregroundColor(.gray)
-                            .frame(width: 24)
-                        TextField("Email", text: $viewModel.email)
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
+                    // OCR Status
+                    if isScanning {
+                        Section {
+                            HStack {
+                                ProgressView()
+                                    .padding(.trailing, AppSpacing.sm)
+                                Text("Scanning business card...")
+                                    .font(AppTypography.subheadline)
+                                    .foregroundColor(AppColors.textSecondary)
+                            }
+                        }
+                    }
+
+                    if let error = scanError {
+                        Section {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(AppColors.accentOrange)
+                                Text(error)
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.textSecondary)
+                            }
+                        }
+                    }
+
+                    // Basic Info Section
+                    Section("Contact Information") {
+                        TextField("Full Name *", text: $viewModel.fullName)
+                            .textContentType(.name)
+                            .autocapitalization(.words)
+
+                        TextField("Job Title", text: $viewModel.title)
+                            .textContentType(.jobTitle)
+
+                        TextField("Company", text: $viewModel.companyName)
+                            .textContentType(.organizationName)
+                    }
+
+                    // Contact Details Section
+                    Section("Contact Details") {
+                        HStack {
+                            Image(systemName: "phone")
+                                .foregroundColor(AppColors.textSecondary)
+                                .frame(width: 24)
+                            TextField("Phone", text: $viewModel.phone)
+                                .textContentType(.telephoneNumber)
+                                .keyboardType(.phonePad)
+                        }
+
+                        HStack {
+                            Image(systemName: "envelope")
+                                .foregroundColor(AppColors.textSecondary)
+                                .frame(width: 24)
+                            TextField("Email", text: $viewModel.email)
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                        }
+                    }
+
+                    // Notes Section
+                    Section("Notes") {
+                        TextEditor(text: $viewModel.notes)
+                            .frame(minHeight: 60)
+                    }
+
+                    // Error Display
+                    if let error = viewModel.errorMessage {
+                        Section {
+                            Text(error)
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.accentRed)
+                        }
                     }
                 }
-
-                // Notes Section
-                Section("Notes") {
-                    TextEditor(text: $viewModel.notes)
-                        .frame(minHeight: 60)
-                }
-
-                // Error Display
-                if let error = viewModel.errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
-                }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("New Contact")
             .navigationBarTitleDisplayMode(.inline)
@@ -346,8 +566,9 @@ struct AddContactWithImageView: View {
                     Button("Next") {
                         showMeetingContext = true
                     }
-                    .disabled(!viewModel.isFormValid)
+                    .disabled(!viewModel.isFormValid || isScanning)
                     .fontWeight(.semibold)
+                    .foregroundColor(AppColors.accentPurple)
                 }
             }
             .sheet(isPresented: $showMeetingContext) {
@@ -359,6 +580,63 @@ struct AddContactWithImageView: View {
                     dismiss()
                 }
             }
+            .task {
+                await performOCR()
+            }
+        }
+    }
+
+    private var displayImage: UIImage? {
+        if let croppedImage = croppedImage {
+            return croppedImage
+        }
+        if let data = imageData {
+            return UIImage(data: data)
+        }
+        return nil
+    }
+
+    private func performOCR() async {
+        guard let data = imageData, let image = UIImage(data: data) else { return }
+
+        isScanning = true
+        scanError = nil
+
+        do {
+            let result = try await BusinessCardScanner.shared.scanBusinessCard(image: image)
+
+            // Update form with OCR results
+            await MainActor.run {
+                if let name = result.fullName, !name.isEmpty {
+                    viewModel.fullName = name
+                }
+                if let title = result.title, !title.isEmpty {
+                    viewModel.title = title
+                }
+                if let company = result.company, !company.isEmpty {
+                    viewModel.companyName = company
+                }
+                if let phone = result.phone, !phone.isEmpty {
+                    viewModel.phone = phone
+                }
+                if let email = result.email, !email.isEmpty {
+                    viewModel.email = email
+                }
+                if let croppedImg = result.croppedImage {
+                    croppedImage = croppedImg
+                }
+
+                isScanning = false
+
+                if result.isEmpty {
+                    scanError = "Could not extract contact info. Please enter manually."
+                }
+            }
+        } catch {
+            await MainActor.run {
+                isScanning = false
+                scanError = "OCR failed: \(error.localizedDescription). Please enter manually."
+            }
         }
     }
 }
@@ -368,7 +646,12 @@ struct AddContactWithImageView: View {
 #if DEBUG
 struct CameraView_Previews: PreviewProvider {
     static var previews: some View {
-        CameraView()
+        Group {
+            CameraView()
+                .preferredColorScheme(.light)
+            CameraView()
+                .preferredColorScheme(.dark)
+        }
     }
 }
 #endif

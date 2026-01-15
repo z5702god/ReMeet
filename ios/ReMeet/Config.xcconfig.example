@@ -1,0 +1,21 @@
+// Re:Meet API Configuration Template
+//
+// SETUP INSTRUCTIONS:
+// 1. Copy this file to Config.xcconfig (in the same directory)
+// 2. Replace placeholder values with your actual API keys
+// 3. Config.xcconfig is already in .gitignore - never commit real keys
+//
+// IMPORTANT: The actual Config.xcconfig file should NOT be committed to Git
+
+// Supabase Configuration
+// Get from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api
+SUPABASE_URL = https$(())/your-project-ref.supabase.co
+SUPABASE_ANON_KEY = your-supabase-anon-key-here
+
+// Google Cloud Vision API
+// Get from: https://console.cloud.google.com/apis/credentials
+GOOGLE_CLOUD_VISION_API_KEY = your-google-cloud-vision-api-key-here
+
+// n8n Chat API (optional)
+// Your n8n webhook URL for the chat feature
+N8N_CHAT_API_URL = https$(())/your-n8n-instance.com/webhook/api/chat

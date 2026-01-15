@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main gradient - deeper for icon visibility -->
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C5CE7"/>
+      <stop offset="50%" stop-color="#7C6FF0"/>
+      <stop offset="100%" stop-color="#A29BFE"/>
+    </linearGradient>
+
+    <!-- Background gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F8F9FF"/>
+    </linearGradient>
+
+    <!-- Inner shadow for depth -->
+    <filter id="innerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="20" result="blur"/>
+      <feOffset dx="0" dy="10" result="offsetblur"/>
+      <feFlood flood-color="#6C5CE7" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Card shadow -->
+    <filter id="cardShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="15" stdDeviation="25" flood-color="#6C5CE7" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background - iOS icon should have solid background -->
+  <rect width="1024" height="1024" fill="url(#bgGradient)"/>
+
+  <!-- Decorative gradient orb in background -->
+  <circle cx="750" cy="280" r="200" fill="#6C5CE7" opacity="0.08"/>
+  <circle cx="280" cy="750" r="150" fill="#A29BFE" opacity="0.06"/>
+
+  <!-- Main Icon Group - Centered -->
+  <g transform="translate(200, 220)">
+
+    <!-- Business Card - Main element -->
+    <g filter="url(#cardShadow)">
+      <!-- Card body with rounded corners -->
+      <rect x="50" y="120" width="420" height="280" rx="32" fill="url(#iconGradient)"/>
+
+      <!-- Card content lines - representing contact info -->
+      <rect x="100" y="180" width="180" height="20" rx="10" fill="white" opacity="0.95"/>
+      <rect x="100" y="220" width="280" height="14" rx="7" fill="white" opacity="0.6"/>
+      <rect x="100" y="250" width="220" height="14" rx="7" fill="white" opacity="0.4"/>
+      <rect x="100" y="280" width="160" height="14" rx="7" fill="white" opacity="0.3"/>
+
+      <!-- Small decorative element on card (like a logo placeholder) -->
+      <rect x="360" y="300" width="60" height="60" rx="12" fill="white" opacity="0.2"/>
+    </g>
+
+    <!-- Circular Arrow - The reconnection symbol -->
+    <g transform="translate(300, 40)">
+      <!-- Arrow circular path -->
+      <path d="M 160 100
+               A 100 100 0 1 1 60 200"
+            stroke="url(#iconGradient)"
+            stroke-width="36"
+            stroke-linecap="round"
+            fill="none"
+            filter="url(#innerGlow)"/>
+
+      <!-- Arrow head - pointing to suggest cycle/return -->
+      <polygon
+        points="30,155 75,200 30,245"
+        fill="url(#iconGradient)"/>
+    </g>
+
+  </g>
+</svg>

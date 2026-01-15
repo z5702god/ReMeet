@@ -2,47 +2,46 @@ import SwiftUI
 
 struct LoginView: View {
 
-    @StateObject private var viewModel = AuthViewModel()
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var viewModel = AuthViewModel()
     @State private var showRegister = false
     @State private var showForgotPassword = false
+    @State private var logoScale: CGFloat = 0.8
+    @State private var formOpacity: Double = 0
 
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background gradient - uses DesignSystem
+                AppColors.authGradient(colorScheme: colorScheme)
+                    .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 30) {
+                    VStack(spacing: AppSpacing.xl) {
                         Spacer(minLength: 60)
 
-                        // Logo and title
-                        VStack(spacing: 16) {
-                            Image(systemName: "person.crop.rectangle.stack")
-                                .font(.system(size: 80))
-                                .foregroundColor(.white)
-
-                            Text("Re:Meet")
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                        // Logo and title with animation
+                        VStack(spacing: AppSpacing.md) {
+                            ReMeetLogo(size: 140, showText: true)
+                                .scaleEffect(logoScale)
 
                             Text("Never forget a connection")
-                                .font(.subheadline)
+                                .font(AppTypography.subheadline)
                                 .foregroundColor(.white.opacity(0.9))
                         }
                         .padding(.bottom, 40)
+                        .onAppear {
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                                logoScale = 1.0
+                            }
+                        }
 
-                        // Login form
-                        VStack(spacing: 20) {
+                        // Login form with fade-in animation
+                        VStack(spacing: AppSpacing.lg) {
                             // Email field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 Text("Email")
-                                    .font(.subheadline)
+                                    .font(AppTypography.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
 
@@ -54,9 +53,9 @@ struct LoginView: View {
                             }
 
                             // Password field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 Text("Password")
-                                    .font(.subheadline)
+                                    .font(AppTypography.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
 
@@ -70,7 +69,7 @@ struct LoginView: View {
                                 showForgotPassword = true
                             } label: {
                                 Text("Forgot Password?")
-                                    .font(.footnote)
+                                    .font(AppTypography.footnote)
                                     .foregroundColor(.white)
                             }
                             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -84,7 +83,7 @@ struct LoginView: View {
                                 HStack {
                                     if viewModel.isLoading {
                                         ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .progressViewStyle(CircularProgressViewStyle(tint: AppColors.accentPurple))
                                     } else {
                                         Text("Sign In")
                                             .fontWeight(.semibold)
@@ -93,11 +92,12 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.white.opacity(viewModel.canLogin ? 1.0 : 0.5))
-                                .foregroundColor(.blue)
-                                .cornerRadius(12)
+                                .foregroundColor(AppColors.accentPurple)
+                                .cornerRadius(AppCornerRadius.medium)
                             }
                             .disabled(!viewModel.canLogin || viewModel.isLoading)
-                            .padding(.top, 10)
+                            .padding(.top, AppSpacing.sm)
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.canLogin)
 
                             // Divider
                             HStack {
@@ -106,15 +106,15 @@ struct LoginView: View {
                                     .frame(height: 1)
 
                                 Text("OR")
-                                    .font(.caption)
+                                    .font(AppTypography.caption)
                                     .foregroundColor(.white.opacity(0.7))
-                                    .padding(.horizontal, 10)
+                                    .padding(.horizontal, AppSpacing.sm)
 
                                 Rectangle()
                                     .fill(Color.white.opacity(0.3))
                                     .frame(height: 1)
                             }
-                            .padding(.vertical, 10)
+                            .padding(.vertical, AppSpacing.sm)
 
                             // Sign up button
                             Button {
@@ -130,10 +130,16 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.white.opacity(0.2))
-                                .cornerRadius(12)
+                                .cornerRadius(AppCornerRadius.medium)
                             }
                         }
                         .padding(.horizontal, 30)
+                        .opacity(formOpacity)
+                        .onAppear {
+                            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
+                                formOpacity = 1.0
+                            }
+                        }
 
                         Spacer()
                     }
@@ -163,9 +169,10 @@ struct LoginView: View {
 
 struct ReMeetTextFieldStyle: TextFieldStyle {
     let icon: String
+    @Environment(\.colorScheme) private var colorScheme
 
     func _body(configuration: TextField<Self._Label>) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.md) {
             Image(systemName: icon)
                 .foregroundColor(.white.opacity(0.7))
                 .frame(width: 20)
@@ -174,11 +181,11 @@ struct ReMeetTextFieldStyle: TextFieldStyle {
                 .foregroundColor(.white)
         }
         .padding()
-        .background(Color.white.opacity(0.2))
-        .cornerRadius(12)
+        .background(colorScheme == .dark ? AppColors.inputBackground : Color.white.opacity(0.2))
+        .cornerRadius(AppCornerRadius.medium)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                .stroke(colorScheme == .dark ? AppColors.inputBorder : Color.white.opacity(0.3), lineWidth: 1)
         )
     }
 }
@@ -188,7 +195,12 @@ struct ReMeetTextFieldStyle: TextFieldStyle {
 #if DEBUG
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView()
+        Group {
+            LoginView()
+                .preferredColorScheme(.light)
+            LoginView()
+                .preferredColorScheme(.dark)
+        }
     }
 }
 #endif

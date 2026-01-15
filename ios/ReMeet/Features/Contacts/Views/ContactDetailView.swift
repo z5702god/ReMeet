@@ -3,219 +3,254 @@ import SwiftUI
 struct ContactDetailView: View {
 
     let contact: Contact
+    var onDelete: (() -> Void)?
 
+    @Environment(\.dismiss) private var dismiss
     @State private var businessCard: BusinessCard?
     @State private var meetingContexts: [MeetingContext] = []
     @State private var isLoading = true
     @State private var showAddMeetingContext = false
+    @State private var showDeleteConfirmation = false
+    @State private var isDeleting = false
+    @State private var headerOpacity: Double = 0
+    @State private var contentOpacity: Double = 0
 
     private let supabase = SupabaseManager.shared
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Business Card Image (if available)
-                if let card = businessCard, let url = URL(string: card.imageUrl) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(height: 180)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxHeight: 200)
-                                .cornerRadius(12)
-                                .shadow(radius: 4)
-                        case .failure:
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundColor(.gray)
-                                .frame(height: 180)
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 16)
-                }
+        ZStack {
+            AppColors.background.ignoresSafeArea()
 
-                // Header with avatar
-                VStack(spacing: 16) {
-                    if businessCard == nil {
-                        Circle()
-                            .fill(LinearGradient(
-                                colors: [.blue, .purple],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
-                            .frame(width: 100, height: 100)
-                            .overlay(
-                                Text(contact.initials)
-                                    .font(.system(size: 40, weight: .semibold))
-                                    .foregroundColor(.white)
-                            )
-                    }
-
-                    Text(contact.fullName)
-                        .font(.title)
-                        .fontWeight(.bold)
-
-                    if let title = contact.titleWithCompany {
-                        Text(title)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    // Favorite badge
-                    if contact.isFavorite {
-                        HStack {
-                            Image(systemName: "star.fill")
-                                .foregroundColor(.yellow)
-                            Text("Favorite")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .padding(.top, businessCard == nil ? 20 : 0)
-
-                // Quick Actions
-                HStack(spacing: 20) {
-                    if let phone = contact.phone {
-                        QuickActionButton(
-                            icon: "phone.fill",
-                            label: "Call",
-                            color: .green
-                        ) {
-                            if let url = URL(string: "tel:\(phone.replacingOccurrences(of: " ", with: ""))") {
-                                UIApplication.shared.open(url)
+            ScrollView {
+                VStack(spacing: AppSpacing.lg) {
+                    // Business Card Image (if available)
+                    if let card = businessCard, let url = URL(string: card.imageUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(height: 180)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxHeight: 200)
+                                    .cornerRadius(AppCornerRadius.medium)
+                                    .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundColor(AppColors.textSecondary)
+                                    .frame(height: 180)
+                            @unknown default:
+                                EmptyView()
                             }
                         }
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.top, AppSpacing.md)
                     }
 
-                    if let email = contact.email {
-                        QuickActionButton(
-                            icon: "envelope.fill",
-                            label: "Email",
-                            color: .blue
-                        ) {
-                            if let url = URL(string: "mailto:\(email)") {
-                                UIApplication.shared.open(url)
+                    // Header with avatar
+                    VStack(spacing: AppSpacing.md) {
+                        if businessCard == nil {
+                            AvatarView(name: contact.fullName, size: 100)
+                        }
+
+                        Text(contact.fullName)
+                            .font(AppTypography.title1)
+                            .foregroundColor(AppColors.textPrimary)
+
+                        if let title = contact.titleWithCompany {
+                            Text(title)
+                                .font(AppTypography.subheadline)
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+
+                        // Favorite badge
+                        if contact.isFavorite {
+                            HStack(spacing: AppSpacing.xs) {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(AppColors.accentOrange)
+                                Text("Favorite")
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.textSecondary)
                             }
+                            .padding(.horizontal, AppSpacing.sm)
+                            .padding(.vertical, AppSpacing.xs)
+                            .background(AppColors.accentOrange.opacity(0.15))
+                            .cornerRadius(AppCornerRadius.small)
+                        }
+                    }
+                    .padding(.top, businessCard == nil ? AppSpacing.lg : 0)
+                    .opacity(headerOpacity)
+                    .onAppear {
+                        withAnimation(.easeOut(duration: 0.4)) {
+                            headerOpacity = 1.0
                         }
                     }
 
-                    QuickActionButton(
-                        icon: "plus.circle.fill",
-                        label: "Context",
-                        color: .purple
-                    ) {
-                        showAddMeetingContext = true
-                    }
-                }
-                .padding(.horizontal)
-
-                // Contact information
-                VStack(spacing: 16) {
-                    if let phone = contact.phone {
-                        ContactInfoRow(icon: "phone.fill", label: "Phone", value: phone, isLink: true)
-                    }
-
-                    if let email = contact.email {
-                        ContactInfoRow(icon: "envelope.fill", label: "Email", value: email, isLink: true)
-                    }
-
-                    if let website = contact.website {
-                        ContactInfoRow(icon: "globe", label: "Website", value: website, isLink: true)
-                    }
-
-                    if let address = contact.address {
-                        ContactInfoRow(icon: "mappin.circle.fill", label: "Address", value: address)
-                    }
-                }
-                .padding(.horizontal)
-
-                // Meeting Contexts
-                if !meetingContexts.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Meeting History")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal)
-
-                        ForEach(meetingContexts) { context in
-                            MeetingContextCard(context: context)
-                        }
-                    }
-                }
-
-                // Notes
-                if let notes = contact.notes {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Notes")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-
-                        Text(notes)
-                            .font(.body)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                }
-
-                // Tags
-                if let tags = contact.tags, !tags.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Tags")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(tags, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Color.blue.opacity(0.2))
-                                        .foregroundColor(.blue)
-                                        .cornerRadius(16)
+                    // Quick Actions
+                    HStack(spacing: AppSpacing.lg) {
+                        if let phone = contact.phone {
+                            QuickActionButton(
+                                icon: "phone.fill",
+                                label: "Call",
+                                color: AppColors.accentGreen
+                            ) {
+                                if let url = URL(string: "tel:\(phone.replacingOccurrences(of: " ", with: ""))") {
+                                    UIApplication.shared.open(url)
                                 }
                             }
                         }
-                    }
-                    .padding(.horizontal)
-                }
 
-                // OCR Status (if pending)
-                if let card = businessCard, card.ocrStatus != .completed {
-                    VStack(spacing: 8) {
-                        HStack {
-                            if card.ocrStatus == .processing {
-                                ProgressView()
-                                    .scaleEffect(0.8)
+                        if let email = contact.email {
+                            QuickActionButton(
+                                icon: "envelope.fill",
+                                label: "Email",
+                                color: AppColors.accentBlue
+                            ) {
+                                if let url = URL(string: "mailto:\(email)") {
+                                    UIApplication.shared.open(url)
+                                }
                             }
-                            Text("OCR Status: \(card.ocrStatus.rawValue.capitalized)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        }
+
+                        QuickActionButton(
+                            icon: "plus.circle.fill",
+                            label: "Context",
+                            color: AppColors.accentPurple
+                        ) {
+                            showAddMeetingContext = true
                         }
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                }
+                    .padding(.horizontal, AppSpacing.md)
+                    .opacity(contentOpacity)
 
-                Spacer(minLength: 40)
+                    // Contact information
+                    VStack(spacing: AppSpacing.md) {
+                        if let phone = contact.phone {
+                            ContactInfoRow(icon: "phone.fill", label: "Phone", value: phone, isLink: true)
+                        }
+
+                        if let email = contact.email {
+                            ContactInfoRow(icon: "envelope.fill", label: "Email", value: email, isLink: true)
+                        }
+
+                        if let website = contact.website {
+                            ContactInfoRow(icon: "globe", label: "Website", value: website, isLink: true)
+                        }
+
+                        if let address = contact.address {
+                            ContactInfoRow(icon: "mappin.circle.fill", label: "Address", value: address)
+                        }
+                    }
+                    .padding(.horizontal, AppSpacing.md)
+                    .opacity(contentOpacity)
+
+                    // Meeting Contexts
+                    if !meetingContexts.isEmpty {
+                        VStack(alignment: .leading, spacing: AppSpacing.md) {
+                            Text("Meeting History")
+                                .font(AppTypography.headline)
+                                .foregroundColor(AppColors.textSecondary)
+                                .padding(.horizontal, AppSpacing.md)
+
+                            ForEach(meetingContexts) { context in
+                                MeetingContextCard(context: context)
+                            }
+                        }
+                        .opacity(contentOpacity)
+                    }
+
+                    // Notes
+                    if let notes = contact.notes {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Notes")
+                                .font(AppTypography.headline)
+                                .foregroundColor(AppColors.textSecondary)
+
+                            Text(notes)
+                                .font(AppTypography.body)
+                                .foregroundColor(AppColors.textPrimary)
+                                .padding(AppSpacing.md)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(AppColors.cardBackground)
+                                .cornerRadius(AppCornerRadius.medium)
+                        }
+                        .padding(.horizontal, AppSpacing.md)
+                        .opacity(contentOpacity)
+                    }
+
+                    // Tags
+                    if let tags = contact.tags, !tags.isEmpty {
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Tags")
+                                .font(AppTypography.headline)
+                                .foregroundColor(AppColors.textSecondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: AppSpacing.sm) {
+                                    ForEach(tags, id: \.self) { tag in
+                                        Text(tag)
+                                            .font(AppTypography.caption)
+                                            .padding(.horizontal, AppSpacing.md)
+                                            .padding(.vertical, AppSpacing.sm)
+                                            .background(AppColors.accentBlue.opacity(0.15))
+                                            .foregroundColor(AppColors.accentBlue)
+                                            .cornerRadius(AppCornerRadius.large)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, AppSpacing.md)
+                        .opacity(contentOpacity)
+                    }
+
+                    // OCR Status (if pending)
+                    if let card = businessCard, card.ocrStatus != .completed {
+                        VStack(spacing: AppSpacing.sm) {
+                            HStack {
+                                if card.ocrStatus == .processing {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                }
+                                Text("OCR Status: \(card.ocrStatus.rawValue.capitalized)")
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.textSecondary)
+                            }
+                        }
+                        .padding(AppSpacing.md)
+                        .frame(maxWidth: .infinity)
+                        .background(AppColors.cardBackground)
+                        .cornerRadius(AppCornerRadius.medium)
+                        .padding(.horizontal, AppSpacing.md)
+                        .opacity(contentOpacity)
+                    }
+
+                    Spacer(minLength: 40)
+                }
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+                        contentOpacity = 1.0
+                    }
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Contact", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(AppColors.accentPurple)
+                }
+            }
+        }
         .task {
             await loadData()
         }
@@ -224,6 +259,28 @@ struct ContactDetailView: View {
                 Task {
                     await loadMeetingContexts()
                 }
+            }
+        }
+        .alert("Delete Contact", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteContact()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete \(contact.fullName)? This action cannot be undone.")
+        }
+        .overlay {
+            if isDeleting {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .overlay {
+                        ProgressView("Deleting...")
+                            .padding(AppSpacing.lg)
+                            .background(AppColors.cardBackground)
+                            .cornerRadius(AppCornerRadius.medium)
+                    }
             }
         }
     }
@@ -254,6 +311,22 @@ struct ContactDetailView: View {
             print("Error loading meeting contexts: \(error)")
         }
     }
+
+    // MARK: - Delete
+
+    private func deleteContact() async {
+        isDeleting = true
+
+        do {
+            try await supabase.deleteContact(id: contact.id)
+            isDeleting = false
+            onDelete?()
+            dismiss()
+        } catch {
+            isDeleting = false
+            print("Error deleting contact: \(error)")
+        }
+    }
 }
 
 // MARK: - Quick Action Button
@@ -266,19 +339,21 @@ struct QuickActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: AppSpacing.sm) {
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundColor(color)
 
                 Text(label)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.textSecondary)
             }
             .frame(width: 70, height: 70)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .background(AppColors.cardBackground)
+            .cornerRadius(AppCornerRadius.medium)
+            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -288,42 +363,44 @@ struct MeetingContextCard: View {
     let context: MeetingContext
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppSpacing.md) {
             // Header
             HStack {
                 if let occasionType = context.occasionType {
                     let type = OccasionType(rawValue: occasionType) ?? .other
                     Image(systemName: type.icon)
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppColors.accentBlue)
                 }
 
                 if let eventName = context.eventName {
                     Text(eventName)
-                        .font(.headline)
+                        .font(AppTypography.headline)
+                        .foregroundColor(AppColors.textPrimary)
                 } else if let occasionType = context.occasionType {
                     let type = OccasionType(rawValue: occasionType) ?? .other
                     Text(type.displayName)
-                        .font(.headline)
+                        .font(AppTypography.headline)
+                        .foregroundColor(AppColors.textPrimary)
                 }
 
                 Spacer()
 
                 if let date = context.meetingDate {
                     Text(date, style: .date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.textSecondary)
                 }
             }
 
             // Location
             if let location = context.locationName {
-                HStack {
+                HStack(spacing: AppSpacing.xs) {
                     Image(systemName: "mappin")
-                        .foregroundColor(.gray)
+                        .foregroundColor(AppColors.textSecondary)
                         .font(.caption)
                     Text(location)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.subheadline)
+                        .foregroundColor(AppColors.textSecondary)
                 }
             }
 
@@ -331,43 +408,44 @@ struct MeetingContextCard: View {
             if let relationshipType = context.relationshipType {
                 let type = RelationshipType(rawValue: relationshipType) ?? .contact
                 Text(type.displayName)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .font(AppTypography.caption)
+                    .padding(.horizontal, AppSpacing.sm)
+                    .padding(.vertical, AppSpacing.xs)
                     .background(type.color.opacity(0.2))
                     .foregroundColor(type.color)
-                    .cornerRadius(8)
+                    .cornerRadius(AppCornerRadius.small)
             }
 
             // Notes
             if let notes = context.notes {
                 Text(notes)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(AppTypography.subheadline)
+                    .foregroundColor(AppColors.textSecondary)
                     .lineLimit(2)
             }
 
             // Follow-up indicator
             if context.followUpRequired {
-                HStack {
+                HStack(spacing: AppSpacing.xs) {
                     Image(systemName: "bell.fill")
-                        .foregroundColor(.orange)
+                        .foregroundColor(AppColors.accentOrange)
                         .font(.caption)
                     Text("Follow-up needed")
-                        .font(.caption)
-                        .foregroundColor(.orange)
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.accentOrange)
                     if let followUpDate = context.followUpDate {
                         Text("by \(followUpDate, style: .date)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.textSecondary)
                     }
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
+        .padding(AppSpacing.md)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.medium)
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+        .padding(.horizontal, AppSpacing.md)
     }
 }
 
@@ -381,30 +459,33 @@ struct ContactInfoRow: View {
     var isLink: Bool = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppSpacing.md) {
             Image(systemName: icon)
-                .foregroundColor(.blue)
+                .foregroundColor(AppColors.accentBlue)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.textSecondary)
 
                 if isLink {
                     Link(value, destination: linkURL)
-                        .font(.body)
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.textPrimary)
                 } else {
                     Text(value)
-                        .font(.body)
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.textPrimary)
                 }
             }
 
             Spacer()
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(AppSpacing.md)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.medium)
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
     }
 
     private var linkURL: URL {
@@ -423,8 +504,16 @@ struct ContactInfoRow: View {
 #if DEBUG
 struct ContactDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationView {
-            ContactDetailView(contact: .sample)
+        Group {
+            NavigationView {
+                ContactDetailView(contact: .sample, onDelete: nil)
+            }
+            .preferredColorScheme(.light)
+
+            NavigationView {
+                ContactDetailView(contact: .sample, onDelete: nil)
+            }
+            .preferredColorScheme(.dark)
         }
     }
 }

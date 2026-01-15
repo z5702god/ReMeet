@@ -1,10 +1,25 @@
 import Foundation
 import Supabase
 
+// MARK: - RPC Parameters
+
+nonisolated struct MeetingTimelineParams: Encodable, Sendable {
+    let userUuid: String
+    let startDate: String?
+    let endDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userUuid = "user_uuid"
+        case startDate = "start_date"
+        case endDate = "end_date"
+    }
+}
+
 /// Shared Supabase client instance
 /// Handles all communication with Supabase backend
+@Observable
 @MainActor
-class SupabaseManager: ObservableObject {
+final class SupabaseManager {
 
     // MARK: - Singleton
 
@@ -16,10 +31,10 @@ class SupabaseManager: ObservableObject {
     let client: Supabase.SupabaseClient
 
     /// Current authenticated user
-    @Published var currentUser: User?
+    var currentUser: User?
 
     /// Authentication state
-    @Published var isAuthenticated = false
+    var isAuthenticated = false
 
     // MARK: - Initialization
 
@@ -41,18 +56,22 @@ class SupabaseManager: ObservableObject {
     /// Setup authentication state change listener
     private func setupAuthStateListener() async {
         // Listen for auth state changes
-        for await state in client.auth.authStateChanges {
-            switch state {
-            case .signedIn(let session):
+        for await (event, session) in client.auth.authStateChanges {
+            switch event {
+            case .signedIn:
                 self.isAuthenticated = true
-                await loadCurrentUser(session.user.id)
+                if let session = session {
+                    await loadCurrentUser(session.user.id)
+                }
 
             case .signedOut:
                 self.isAuthenticated = false
                 self.currentUser = nil
 
-            case .userUpdated(let session):
-                await loadCurrentUser(session.user.id)
+            case .userUpdated:
+                if let session = session {
+                    await loadCurrentUser(session.user.id)
+                }
 
             default:
                 break
@@ -73,7 +92,7 @@ class SupabaseManager: ObservableObject {
 
             self.currentUser = user
         } catch {
-            print("❌ Error loading user: \(error)")
+            print("Error loading user: \(error)")
         }
     }
 
@@ -113,6 +132,64 @@ class SupabaseManager: ObservableObject {
     /// Update user password
     func updatePassword(newPassword: String) async throws {
         try await client.auth.update(user: UserAttributes(password: newPassword))
+    }
+
+    /// Delete user account and all associated data
+    func deleteUserAccount() async throws {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
+                NSLocalizedDescriptionKey: "User not authenticated"
+            ])
+        }
+
+        // Delete all user data in order (respecting foreign key constraints)
+        // 1. Delete meeting contexts
+        try await client
+            .from("meeting_contexts")
+            .delete()
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+
+        // 2. Delete business cards
+        try await client
+            .from("business_cards")
+            .delete()
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+
+        // 3. Delete contacts
+        try await client
+            .from("contacts")
+            .delete()
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+
+        // 4. Delete user storage files
+        do {
+            let files = try await client.storage
+                .from(SupabaseConfig.businessCardsBucket)
+                .list(path: userId.uuidString)
+
+            if !files.isEmpty {
+                let paths = files.map { "\(userId.uuidString)/\($0.name)" }
+                try await client.storage
+                    .from(SupabaseConfig.businessCardsBucket)
+                    .remove(paths: paths)
+            }
+        } catch {
+            // Storage deletion failure shouldn't block account deletion
+            print("Warning: Failed to delete storage files: \(error)")
+        }
+
+        // 5. Delete user record
+        try await client
+            .from("users")
+            .delete()
+            .eq("id", value: userId.uuidString)
+            .execute()
+
+        // 6. Sign out (this will trigger auth state change)
+        try await client.auth.signOut()
     }
 
     // MARK: - Storage Methods
@@ -229,17 +306,12 @@ class SupabaseManager: ObservableObject {
             ])
         }
 
-        var params: [String: Any] = ["user_uuid": userId.uuidString]
-
-        if let start = startDate {
-            let formatter = ISO8601DateFormatter()
-            params["start_date"] = formatter.string(from: start)
-        }
-
-        if let end = endDate {
-            let formatter = ISO8601DateFormatter()
-            params["end_date"] = formatter.string(from: end)
-        }
+        let formatter = ISO8601DateFormatter()
+        let params = MeetingTimelineParams(
+            userUuid: userId.uuidString,
+            startDate: startDate.map { formatter.string(from: $0) },
+            endDate: endDate.map { formatter.string(from: $0) }
+        )
 
         let result = try await client
             .rpc("get_meeting_timeline", params: params)

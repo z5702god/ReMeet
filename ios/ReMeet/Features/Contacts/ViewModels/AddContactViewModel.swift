@@ -2,31 +2,32 @@ import Foundation
 import SwiftUI
 
 /// ViewModel for adding a new contact
+@Observable
 @MainActor
-class AddContactViewModel: ObservableObject {
+final class AddContactViewModel {
 
     // MARK: - Form Fields
 
-    @Published var fullName = ""
-    @Published var title = ""
-    @Published var companyName = ""
-    @Published var phone = ""
-    @Published var email = ""
-    @Published var website = ""
-    @Published var address = ""
-    @Published var notes = ""
+    var fullName = ""
+    var title = ""
+    var companyName = ""
+    var phone = ""
+    var email = ""
+    var website = ""
+    var address = ""
+    var notes = ""
 
     // MARK: - Company Search
 
-    @Published var companySuggestions: [Company] = []
-    @Published var selectedCompany: Company?
-    @Published var isSearchingCompanies = false
+    var companySuggestions: [Company] = []
+    var selectedCompany: Company?
+    var isSearchingCompanies = false
 
     // MARK: - State
 
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var didSaveSuccessfully = false
+    var isLoading = false
+    var errorMessage: String?
+    var didSaveSuccessfully = false
 
     // MARK: - Dependencies
 

@@ -103,22 +103,26 @@ Business professionals need a smart way to not just store business cards, but to
 
 ### 1. Business Card Capture & OCR
 
-**FR-1.1: Multi-Card Camera Capture**
-- Support batch scanning of multiple business cards in one session
-- Auto-detect card boundaries and capture individual images
-- Provide visual feedback for successful capture
-- Allow retake for individual cards
+**FR-1.1: Multi-Card Camera Capture** ✅ IMPLEMENTED
+- Batch scanning mode: continuously capture multiple cards in one session
+- Thumbnail strip showing all captured cards at bottom of screen
+- Card count badge on capture button
+- Tap thumbnail to preview/delete individual cards
+- "Clear All" option to reset batch
+- "Done" button to proceed to batch editing
+- Simulator support: multi-select photos from library
 
-**FR-1.2: OCR Processing**
-- Extract key fields: Name, Title, Company, Phone, Email, Address, Website
-- Support English and Chinese (Traditional/Simplified) business cards
-- Confidence scoring for OCR results
-- Queue-based processing for multiple cards
+**FR-1.2: OCR Processing** ✅ IMPLEMENTED
+- Extract key fields: Name, Title, Company, Phone, Email
+- Support English and Chinese business cards via Google Cloud Vision
+- Auto-detect card boundaries and crop
+- Queue-based OCR processing in batch edit flow
 
-**FR-1.3: Manual Editing**
-- Allow users to review and edit OCR results
-- Highlight low-confidence fields for review
-- Original card image always accessible
+**FR-1.3: Manual Editing** ✅ IMPLEMENTED
+- Review and edit OCR results before saving
+- Progress indicator during OCR scanning
+- Error messages for failed OCR with manual entry fallback
+- Original card image always displayed
 
 ### 2. AI-Powered Context Recording
 
@@ -166,10 +170,14 @@ Tables:
 
 ### 4. Organization & Categorization
 
-**FR-4.1: Company Grouping**
-- Auto-group contacts by company
-- Display company logo (fetched from Clearbit/similar API)
-- Company-level statistics (# of contacts, last interaction)
+**FR-4.1: Company Grouping** ✅ IMPLEMENTED
+- Companies list view with search functionality
+- Company logo placeholder with initials (Clearbit integration deferred)
+- Company-level statistics: contact count, last interaction date
+- Company detail view showing all contacts from that company
+- Contact avatars stack preview on company row
+- Quick actions (call/email) on contact rows
+- Industry and website display
 
 **FR-4.2: Smart Lists**
 - Recent contacts (last 30 days)
@@ -179,12 +187,18 @@ Tables:
 
 ### 5. Memory & Timeline Features
 
-**FR-5.1: Timeline View**
-- Chronological browsing of business cards
-- Calendar view with meeting density visualization
-- Filter by date range, location, or company
+**FR-5.1: Timeline View** ✅ IMPLEMENTED
+- Vertical timeline showing business cards by creation date
+- Left column: Date number + weekday
+- Middle column: Timeline dots connected by vertical lines
+- Right column: Contact cards with avatar, name, title @ company
+- Month navigation with previous/next arrows
+- Click month title to return to current month
+- Same-day contacts grouped (date shown only once)
+- Today's entries highlighted in blue
+- Tap contact card to view details
 
-**FR-5.2: Memory Playback**
+**FR-5.2: Memory Playback** (Deferred to v2)
 - Card flip animation showing front/back
 - Display meeting context alongside card image
 - Photo gallery-style navigation

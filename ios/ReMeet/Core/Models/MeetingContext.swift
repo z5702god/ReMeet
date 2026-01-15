@@ -8,7 +8,7 @@ struct MeetingContext: Codable, Identifiable {
 
     // Meeting details
     var meetingDate: Date?
-    var meetingTime: Date?
+    var meetingTime: String?  // PostgreSQL time type expects "HH:mm:ss" format
     var locationName: String?
     var locationAddress: String?
     var locationLat: Double?
@@ -65,8 +65,17 @@ struct MeetingContext: Codable, Identifiable {
         id = try container.decode(UUID.self, forKey: .id)
         userId = try container.decode(UUID.self, forKey: .userId)
         contactId = try container.decode(UUID.self, forKey: .contactId)
-        meetingDate = try container.decodeIfPresent(Date.self, forKey: .meetingDate)
-        meetingTime = try container.decodeIfPresent(Date.self, forKey: .meetingTime)
+
+        // Handle PostgreSQL date format (YYYY-MM-DD)
+        if let dateString = try container.decodeIfPresent(String.self, forKey: .meetingDate) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            meetingDate = formatter.date(from: dateString)
+        } else {
+            meetingDate = nil
+        }
+
+        meetingTime = try container.decodeIfPresent(String.self, forKey: .meetingTime)
         locationName = try container.decodeIfPresent(String.self, forKey: .locationName)
         locationAddress = try container.decodeIfPresent(String.self, forKey: .locationAddress)
         locationLat = try container.decodeIfPresent(Double.self, forKey: .locationLat)
@@ -78,15 +87,23 @@ struct MeetingContext: Codable, Identifiable {
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
         aiSummary = try container.decodeIfPresent(String.self, forKey: .aiSummary)
         followUpRequired = try container.decode(Bool.self, forKey: .followUpRequired)
-        followUpDate = try container.decodeIfPresent(Date.self, forKey: .followUpDate)
+
+        // Handle PostgreSQL date format for followUpDate
+        if let dateString = try container.decodeIfPresent(String.self, forKey: .followUpDate) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            followUpDate = formatter.date(from: dateString)
+        } else {
+            followUpDate = nil
+        }
+
         followUpNotes = try container.decodeIfPresent(String.self, forKey: .followUpNotes)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
 
-        // Decode JSON object
-        if let metadata = try container.decodeIfPresent(Data.self, forKey: .aiExtractedMetadata) {
-            aiExtractedMetadata = try? JSONSerialization.jsonObject(with: metadata) as? [String: Any]
-        }
+        // Skip aiExtractedMetadata decoding - JSONB from Supabase is not compatible with Data type
+        // This field is not currently used in the app
+        aiExtractedMetadata = nil
     }
 
     // Memberwise initializer for creating new instances
@@ -95,7 +112,7 @@ struct MeetingContext: Codable, Identifiable {
         userId: UUID,
         contactId: UUID,
         meetingDate: Date?,
-        meetingTime: Date?,
+        meetingTime: String?,
         locationName: String?,
         locationAddress: String?,
         locationLat: Double?,
@@ -135,6 +152,47 @@ struct MeetingContext: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    // Custom encode implementation
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        try container.encode(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(contactId, forKey: .contactId)
+
+        // Encode meetingDate as string (PostgreSQL date format)
+        if let date = meetingDate {
+            try container.encode(dateFormatter.string(from: date), forKey: .meetingDate)
+        }
+
+        try container.encodeIfPresent(meetingTime, forKey: .meetingTime)
+        try container.encodeIfPresent(locationName, forKey: .locationName)
+        try container.encodeIfPresent(locationAddress, forKey: .locationAddress)
+        try container.encodeIfPresent(locationLat, forKey: .locationLat)
+        try container.encodeIfPresent(locationLng, forKey: .locationLng)
+        try container.encodeIfPresent(eventName, forKey: .eventName)
+        try container.encodeIfPresent(occasionType, forKey: .occasionType)
+        try container.encodeIfPresent(relationshipType, forKey: .relationshipType)
+        try container.encodeIfPresent(conversationTopics, forKey: .conversationTopics)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encodeIfPresent(aiSummary, forKey: .aiSummary)
+        try container.encode(followUpRequired, forKey: .followUpRequired)
+
+        // Encode followUpDate as string (PostgreSQL date format)
+        if let date = followUpDate {
+            try container.encode(dateFormatter.string(from: date), forKey: .followUpDate)
+        }
+
+        try container.encodeIfPresent(followUpNotes, forKey: .followUpNotes)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+
+        // Skip aiExtractedMetadata encoding - not used in the app
+        // If needed in the future, use a proper JSONB-compatible encoding
+    }
 }
 
 // MARK: - Sample Data
@@ -146,7 +204,7 @@ extension MeetingContext {
         userId: UUID(),
         contactId: UUID(),
         meetingDate: Date(),
-        meetingTime: Date(),
+        meetingTime: "14:30:00",
         locationName: "Tech Summit 2024",
         locationAddress: "Moscone Center, San Francisco",
         locationLat: 37.7749,

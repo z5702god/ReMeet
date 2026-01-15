@@ -3,19 +3,20 @@ import SwiftUI
 
 /// Authentication view model
 /// Handles user authentication logic
+@Observable
 @MainActor
-class AuthViewModel: ObservableObject {
+final class AuthViewModel {
 
-    // MARK: - Published Properties
+    // MARK: - Form Properties
 
-    @Published var email = ""
-    @Published var password = ""
-    @Published var fullName = ""
-    @Published var confirmPassword = ""
+    var email = ""
+    var password = ""
+    var fullName = ""
+    var confirmPassword = ""
 
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
+    var isLoading = false
+    var errorMessage: String?
+    var showError = false
 
     // MARK: - Dependencies
 
@@ -23,12 +24,33 @@ class AuthViewModel: ObservableObject {
 
     // MARK: - Computed Properties
 
+    /// Validates email format using regex pattern
+    /// Requires: local@domain.tld format with valid characters
     var isEmailValid: Bool {
-        email.contains("@") && email.contains(".")
+        guard !email.isEmpty else { return false }
+
+        // RFC 5322 simplified email regex
+        let emailPattern = #"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"#
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailPattern)
+
+        return emailPredicate.evaluate(with: email)
     }
 
+    /// Validates password strength
+    /// Requires: minimum 8 characters, at least one uppercase, one lowercase, one number
     var isPasswordValid: Bool {
-        password.count >= 8
+        guard password.count >= 8 else { return false }
+
+        let hasUppercase = password.range(of: "[A-Z]", options: .regularExpression) != nil
+        let hasLowercase = password.range(of: "[a-z]", options: .regularExpression) != nil
+        let hasNumber = password.range(of: "[0-9]", options: .regularExpression) != nil
+
+        return hasUppercase && hasLowercase && hasNumber
+    }
+
+    /// User-friendly password requirement description
+    var passwordRequirements: String {
+        "Password must be at least 8 characters with uppercase, lowercase, and a number"
     }
 
     var passwordsMatch: Bool {
@@ -71,7 +93,7 @@ class AuthViewModel: ObservableObject {
             if !isEmailValid {
                 showError(message: "Please enter a valid email address")
             } else if !isPasswordValid {
-                showError(message: "Password must be at least 8 characters")
+                showError(message: passwordRequirements)
             } else if !passwordsMatch {
                 showError(message: "Passwords do not match")
             } else if fullName.isEmpty {

@@ -3,15 +3,16 @@ import SwiftUI
 
 /// Home view model
 /// Manages contacts list and search
+@Observable
 @MainActor
-class HomeViewModel: ObservableObject {
+final class HomeViewModel {
 
-    // MARK: - Published Properties
+    // MARK: - Properties
 
-    @Published var contacts: [Contact] = []
-    @Published var searchQuery = ""
-    @Published var isLoading = false
-    @Published var errorMessage: String?
+    var contacts: [Contact] = []
+    var searchQuery = ""
+    var isLoading = false
+    var errorMessage: String?
 
     // MARK: - Dependencies
 
@@ -40,6 +41,11 @@ class HomeViewModel: ObservableObject {
         }.prefix(5).map { $0 }
     }
 
+    /// Favorite contacts
+    var favoriteContacts: [Contact] {
+        contacts.filter { $0.isFavorite }
+    }
+
     // MARK: - Methods
 
     /// Load all contacts
@@ -51,7 +57,7 @@ class HomeViewModel: ObservableObject {
             contacts = try await supabase.fetchContacts()
         } catch {
             errorMessage = "Failed to load contacts: \(error.localizedDescription)"
-            print("❌ Error loading contacts: \(error)")
+            print("Error loading contacts: \(error)")
         }
 
         isLoading = false
@@ -70,7 +76,7 @@ class HomeViewModel: ObservableObject {
             contacts = try await supabase.searchContacts(query: searchQuery)
         } catch {
             errorMessage = "Search failed: \(error.localizedDescription)"
-            print("❌ Error searching contacts: \(error)")
+            print("Error searching contacts: \(error)")
         }
 
         isLoading = false
@@ -83,7 +89,7 @@ class HomeViewModel: ObservableObject {
             contacts.removeAll { $0.id == contact.id }
         } catch {
             errorMessage = "Failed to delete contact: \(error.localizedDescription)"
-            print("❌ Error deleting contact: \(error)")
+            print("Error deleting contact: \(error)")
         }
     }
 
@@ -101,7 +107,7 @@ class HomeViewModel: ObservableObject {
             }
         } catch {
             errorMessage = "Failed to update contact: \(error.localizedDescription)"
-            print("❌ Error updating contact: \(error)")
+            print("Error updating contact: \(error)")
         }
     }
 }

@@ -3,46 +3,49 @@ import SwiftUI
 struct RegisterView: View {
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AuthViewModel()
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var viewModel = AuthViewModel()
+    @State private var headerScale: CGFloat = 0.9
+    @State private var formOpacity: Double = 0
 
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color.purple.opacity(0.6), Color.blue.opacity(0.6)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background gradient - uses DesignSystem
+                AppColors.authGradient(colorScheme: colorScheme)
+                    .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 30) {
-                        // Header
-                        VStack(spacing: 12) {
-                            Image(systemName: "person.crop.circle.badge.plus")
-                                .font(.system(size: 60))
-                                .foregroundColor(.white)
+                    VStack(spacing: AppSpacing.xl) {
+                        // Header with animation
+                        VStack(spacing: AppSpacing.md) {
+                            ReMeetLogo(size: 100, showText: false)
 
                             Text("Create Account")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .font(AppTypography.largeTitle)
                                 .foregroundColor(.white)
 
                             Text("Join Re:Meet and never forget a connection")
-                                .font(.subheadline)
+                                .font(AppTypography.subheadline)
                                 .foregroundColor(.white.opacity(0.9))
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
                         .padding(.top, 40)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, AppSpacing.lg)
+                        .scaleEffect(headerScale)
+                        .onAppear {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                                headerScale = 1.0
+                            }
+                        }
 
-                        // Registration form
-                        VStack(spacing: 20) {
+                        // Registration form with fade-in animation
+                        VStack(spacing: AppSpacing.lg) {
                             // Full name field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 Text("Full Name")
-                                    .font(.subheadline)
+                                    .font(AppTypography.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
 
@@ -52,9 +55,9 @@ struct RegisterView: View {
                             }
 
                             // Email field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 Text("Email")
-                                    .font(.subheadline)
+                                    .font(AppTypography.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.white)
 
@@ -66,10 +69,10 @@ struct RegisterView: View {
                             }
 
                             // Password field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 HStack {
                                     Text("Password")
-                                        .font(.subheadline)
+                                        .font(AppTypography.subheadline)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.white)
 
@@ -77,7 +80,8 @@ struct RegisterView: View {
 
                                     if !viewModel.password.isEmpty {
                                         Image(systemName: viewModel.isPasswordValid ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                            .foregroundColor(viewModel.isPasswordValid ? .green : .red)
+                                            .foregroundColor(viewModel.isPasswordValid ? AppColors.accentGreen : AppColors.accentRed)
+                                            .transition(.scale.combined(with: .opacity))
                                     }
                                 }
 
@@ -87,16 +91,18 @@ struct RegisterView: View {
 
                                 if !viewModel.password.isEmpty && !viewModel.isPasswordValid {
                                     Text("At least 8 characters")
-                                        .font(.caption)
-                                        .foregroundColor(.red.opacity(0.8))
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.accentRed.opacity(0.9))
+                                        .transition(.opacity)
                                 }
                             }
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.isPasswordValid)
 
                             // Confirm password field
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: AppSpacing.sm) {
                                 HStack {
                                     Text("Confirm Password")
-                                        .font(.subheadline)
+                                        .font(AppTypography.subheadline)
                                         .fontWeight(.semibold)
                                         .foregroundColor(.white)
 
@@ -104,7 +110,8 @@ struct RegisterView: View {
 
                                     if !viewModel.confirmPassword.isEmpty {
                                         Image(systemName: viewModel.passwordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                            .foregroundColor(viewModel.passwordsMatch ? .green : .red)
+                                            .foregroundColor(viewModel.passwordsMatch ? AppColors.accentGreen : AppColors.accentRed)
+                                            .transition(.scale.combined(with: .opacity))
                                     }
                                 }
 
@@ -114,10 +121,12 @@ struct RegisterView: View {
 
                                 if !viewModel.confirmPassword.isEmpty && !viewModel.passwordsMatch {
                                     Text("Passwords do not match")
-                                        .font(.caption)
-                                        .foregroundColor(.red.opacity(0.8))
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.accentRed.opacity(0.9))
+                                        .transition(.opacity)
                                 }
                             }
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.passwordsMatch)
 
                             // Sign up button
                             Button {
@@ -137,20 +146,27 @@ struct RegisterView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color.white.opacity(viewModel.canRegister ? 1.0 : 0.5))
-                                .foregroundColor(.purple)
-                                .cornerRadius(12)
+                                .foregroundColor(AppColors.accentPurple)
+                                .cornerRadius(AppCornerRadius.medium)
                             }
                             .disabled(!viewModel.canRegister || viewModel.isLoading)
-                            .padding(.top, 10)
+                            .padding(.top, AppSpacing.sm)
+                            .animation(.easeInOut(duration: 0.2), value: viewModel.canRegister)
 
                             // Terms and privacy
                             Text("By signing up, you agree to our Terms of Service and Privacy Policy")
-                                .font(.caption)
+                                .font(AppTypography.caption)
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
                         .padding(.horizontal, 30)
+                        .opacity(formOpacity)
+                        .onAppear {
+                            withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+                                formOpacity = 1.0
+                            }
+                        }
 
                         Spacer()
                     }
@@ -164,6 +180,7 @@ struct RegisterView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .foregroundColor(.white)
+                            .fontWeight(.medium)
                     }
                 }
             }
@@ -188,7 +205,12 @@ struct RegisterView: View {
 #if DEBUG
 struct RegisterView_Previews: PreviewProvider {
     static var previews: some View {
-        RegisterView()
+        Group {
+            RegisterView()
+                .preferredColorScheme(.light)
+            RegisterView()
+                .preferredColorScheme(.dark)
+        }
     }
 }
 #endif

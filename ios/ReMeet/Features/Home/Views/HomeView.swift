@@ -2,30 +2,91 @@ import SwiftUI
 
 struct HomeView: View {
 
-    @EnvironmentObject var supabase: SupabaseClient
-    @StateObject private var viewModel = HomeViewModel()
+    @Environment(SupabaseManager.self) var supabase
+    @State private var viewModel = HomeViewModel()
     @State private var showProfile = false
     @State private var showAddContact = false
+    @State private var contentOpacity: Double = 0
 
     var body: some View {
         NavigationView {
             ZStack {
+                // Background
+                AppColors.background.ignoresSafeArea()
+
                 if viewModel.isLoading {
-                    ProgressView("Loading...")
+                    ProgressView()
+                        .scaleEffect(1.2)
                 } else if viewModel.contacts.isEmpty {
-                    emptyStateView
+                    EmptyStateView(
+                        icon: "rectangle.stack.badge.plus",
+                        title: "No Business Cards Yet",
+                        message: "Tap the camera icon to scan your first business card",
+                        buttonTitle: "Scan Card",
+                        buttonAction: { }
+                    )
                 } else {
-                    contactsListView
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Header
+                            headerSection
+
+                            // Search
+                            SearchBarView(text: $viewModel.searchQuery, placeholder: "Search contacts...")
+                                .padding(.horizontal, AppSpacing.md)
+                                .padding(.bottom, AppSpacing.md)
+
+                            // Favorites Section
+                            if !viewModel.favoriteContacts.isEmpty {
+                                favoritesSection
+                            }
+
+                            // Recent Section
+                            if !viewModel.recentContacts.isEmpty {
+                                recentSection
+                            }
+
+                            // All Contacts Section
+                            allContactsSection
+
+                            // Bottom spacing for FAB
+                            Spacer(minLength: 100)
+                        }
+                        .opacity(contentOpacity)
+                        .onAppear {
+                            withAnimation(.easeOut(duration: 0.4)) {
+                                contentOpacity = 1.0
+                            }
+                        }
+                    }
+                    .refreshable {
+                        await viewModel.loadContacts()
+                    }
+                }
+
+                // Floating Action Button
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        FloatingActionButton(icon: "plus") {
+                            showAddContact = true
+                        }
+                        .padding(.trailing, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.lg)
+                    }
                 }
             }
-            .navigationTitle("Business Cards")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showAddContact = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title3)
+                    HStack(spacing: 8) {
+                        // Mini logo
+                        ReMeetLogo(size: 32, showText: false)
+
+                        Text("Re:Meet")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundStyle(AppColors.primaryGradient)
                     }
                 }
 
@@ -33,8 +94,9 @@ struct HomeView: View {
                     Button {
                         showProfile = true
                     } label: {
-                        Image(systemName: "person.circle")
-                            .font(.title3)
+                        Image(systemName: "person.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(AppColors.primaryGradient)
                     }
                 }
             }
@@ -48,9 +110,6 @@ struct HomeView: View {
                     }
                 }
             }
-            .refreshable {
-                await viewModel.loadContacts()
-            }
             .onAppear {
                 Task {
                     await viewModel.loadContacts()
@@ -59,154 +118,220 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Empty State
+    // MARK: - Header Section
 
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "rectangle.stack.badge.plus")
-                .font(.system(size: 80))
-                .foregroundColor(.gray)
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Text("Welcome back!")
+                .font(AppTypography.subheadline)
+                .foregroundColor(AppColors.textSecondary)
 
-            Text("No Business Cards Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Text("Tap the camera icon to scan your first business card")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Button {
-                // Switch to camera tab
-                // This would need to be coordinated with the parent TabView
-            } label: {
-                HStack {
-                    Image(systemName: "camera.fill")
-                    Text("Scan Card")
-                }
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-            }
-            .padding(.top, 20)
+            Text("\(viewModel.contacts.count) contacts")
+                .font(AppTypography.title3)
+                .foregroundColor(AppColors.textPrimary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.md)
     }
 
-    // MARK: - Contacts List
+    // MARK: - Favorites Section
 
-    private var contactsListView: some View {
-        List {
-            // Search bar
-            Section {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
+    private var favoritesSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            SectionHeader(title: "Favorites")
 
-                    TextField("Search contacts...", text: $viewModel.searchQuery)
-                        .textFieldStyle(.plain)
-                }
-                .padding(8)
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-            }
-            .listRowBackground(Color.clear)
-
-            // Recent contacts
-            if !viewModel.recentContacts.isEmpty {
-                Section("Recent") {
-                    ForEach(viewModel.recentContacts) { contact in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppSpacing.md) {
+                    ForEach(viewModel.favoriteContacts) { contact in
                         NavigationLink {
-                            ContactDetailView(contact: contact)
+                            ContactDetailView(contact: contact, onDelete: {
+                                Task { await viewModel.loadContacts() }
+                            })
                         } label: {
-                            ContactRowView(contact: contact)
+                            FavoriteContactCard(contact: contact)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-            }
-
-            // All contacts
-            Section("All Contacts") {
-                ForEach(viewModel.filteredContacts) { contact in
-                    NavigationLink {
-                        ContactDetailView(contact: contact)
-                    } label: {
-                        ContactRowView(contact: contact)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            Task {
-                                await viewModel.deleteContact(contact)
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            Task {
-                                await viewModel.toggleFavorite(contact)
-                            }
-                        } label: {
-                            Label(
-                                contact.isFavorite ? "Unfavorite" : "Favorite",
-                                systemImage: contact.isFavorite ? "star.slash" : "star.fill"
-                            )
-                        }
-                        .tint(.yellow)
-                    }
-                }
+                .padding(.horizontal, AppSpacing.md)
             }
         }
-        .listStyle(.insetGrouped)
+        .padding(.bottom, AppSpacing.lg)
+    }
+
+    // MARK: - Recent Section
+
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            SectionHeader(title: "Recently Added")
+
+            VStack(spacing: AppSpacing.sm) {
+                ForEach(viewModel.recentContacts.prefix(3)) { contact in
+                    NavigationLink {
+                        ContactDetailView(contact: contact, onDelete: {
+                            Task { await viewModel.loadContacts() }
+                        })
+                    } label: {
+                        ContactRowCard(
+                            contact: contact,
+                            onFavorite: {
+                                Task { await viewModel.toggleFavorite(contact) }
+                            },
+                            onDelete: {
+                                Task { await viewModel.deleteContact(contact) }
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, AppSpacing.md)
+        }
+        .padding(.bottom, AppSpacing.lg)
+    }
+
+    // MARK: - All Contacts Section
+
+    private var allContactsSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            SectionHeader(title: "All Contacts")
+
+            VStack(spacing: AppSpacing.sm) {
+                ForEach(viewModel.filteredContacts) { contact in
+                    NavigationLink {
+                        ContactDetailView(contact: contact, onDelete: {
+                            Task { await viewModel.loadContacts() }
+                        })
+                    } label: {
+                        ContactRowCard(
+                            contact: contact,
+                            onFavorite: {
+                                Task { await viewModel.toggleFavorite(contact) }
+                            },
+                            onDelete: {
+                                Task { await viewModel.deleteContact(contact) }
+                            }
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, AppSpacing.md)
+        }
     }
 }
 
-// MARK: - Contact Row View
+// MARK: - Favorite Contact Card
 
-struct ContactRowView: View {
-
+struct FavoriteContactCard: View {
     let contact: Contact
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Avatar
-            Circle()
-                .fill(LinearGradient(
-                    colors: [.blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(contact.initials)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                )
+        VStack(spacing: AppSpacing.sm) {
+            AvatarView(name: contact.fullName, size: 60)
 
-            // Contact info
+            VStack(spacing: 2) {
+                Text(contact.fullName.components(separatedBy: " ").first ?? contact.fullName)
+                    .font(AppTypography.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppColors.textPrimary)
+                    .lineLimit(1)
+
+                if let company = contact.company?.name {
+                    Text(company)
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .frame(width: 90)
+        .padding(.vertical, AppSpacing.md)
+        .padding(.horizontal, AppSpacing.sm)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.medium)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+}
+
+// MARK: - Contact Row Card
+
+struct ContactRowCard: View {
+    let contact: Contact
+    var onFavorite: (() -> Void)?
+    var onDelete: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            // Avatar
+            AvatarView(name: contact.fullName, size: 50)
+
+            // Contact Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(contact.fullName)
-                    .font(.headline)
+                    .font(AppTypography.headline)
+                    .foregroundColor(AppColors.textPrimary)
 
                 if let title = contact.titleWithCompany {
                     Text(title)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(AppTypography.subheadline)
+                        .foregroundColor(AppColors.textSecondary)
                         .lineLimit(1)
                 }
             }
 
             Spacer()
 
-            // Favorite star
+            // Favorite indicator
             if contact.isFavorite {
                 Image(systemName: "star.fill")
-                    .foregroundColor(.yellow)
+                    .font(.subheadline)
+                    .foregroundColor(AppColors.accentOrange)
+            }
+
+            // Chevron
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(AppColors.textSecondary)
+        }
+        .padding(AppSpacing.md)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.medium)
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+    }
+}
+
+// MARK: - Contact Row View (Legacy support)
+
+struct ContactRowView: View {
+    let contact: Contact
+
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            AvatarView(name: contact.fullName, size: 50)
+
+            VStack(alignment: .leading, spacing: AppSpacing.xs) {
+                Text(contact.fullName)
+                    .font(AppTypography.headline)
+                    .foregroundColor(AppColors.textPrimary)
+
+                if let title = contact.titleWithCompany {
+                    Text(title)
+                        .font(AppTypography.subheadline)
+                        .foregroundColor(AppColors.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            if contact.isFavorite {
+                Image(systemName: "star.fill")
+                    .foregroundColor(AppColors.accentOrange)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, AppSpacing.xs)
     }
 }
 
@@ -215,49 +340,106 @@ struct ContactRowView: View {
 struct ProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var supabase: SupabaseClient
+    @Environment(SupabaseManager.self) var supabase
+    @State private var showPrivacyPolicy = false
+    @State private var showDeleteAccount = false
 
     var body: some View {
         NavigationView {
-            List {
-                Section {
-                    if let user = supabase.currentUser {
-                        VStack(spacing: 12) {
-                            // Avatar
-                            Circle()
-                                .fill(LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ))
-                                .frame(width: 80, height: 80)
-                                .overlay(
-                                    Text(user.firstName?.prefix(1).uppercased() ?? "U")
-                                        .font(.largeTitle)
-                                        .foregroundColor(.white)
+            ZStack {
+                AppColors.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: AppSpacing.lg) {
+                        // Profile Header
+                        if let user = supabase.currentUser {
+                            VStack(spacing: AppSpacing.md) {
+                                AvatarView(
+                                    name: user.displayName,
+                                    size: 100
                                 )
 
-                            Text(user.displayName)
-                                .font(.title2)
-                                .fontWeight(.semibold)
+                                VStack(spacing: AppSpacing.xs) {
+                                    Text(user.displayName)
+                                        .font(AppTypography.title2)
+                                        .foregroundColor(AppColors.textPrimary)
 
-                            Text(user.email)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                    Text(user.email)
+                                        .font(AppTypography.subheadline)
+                                        .foregroundColor(AppColors.textSecondary)
+                                }
+                            }
+                            .padding(.vertical, AppSpacing.xl)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical)
-                    }
-                }
 
-                Section("Account") {
-                    Button(role: .destructive) {
-                        Task {
-                            try? await supabase.signOut()
-                            dismiss()
+                        // Account Section
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Account")
+                                .font(AppTypography.headline)
+                                .foregroundColor(AppColors.textSecondary)
+                                .padding(.horizontal, AppSpacing.md)
+
+                            VStack(spacing: 1) {
+                                Button {
+                                    showPrivacyPolicy = true
+                                } label: {
+                                    ProfileMenuItem(
+                                        icon: "lock.fill",
+                                        title: "Privacy Policy",
+                                        iconColor: AppColors.accentGreen
+                                    )
+                                }
+                            }
+                            .cardStyle(padding: 0)
+                            .padding(.horizontal, AppSpacing.md)
                         }
-                    } label: {
-                        Label("Sign Out", systemImage: "arrow.right.square")
+
+                        // Danger Zone Section
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Danger Zone")
+                                .font(AppTypography.headline)
+                                .foregroundColor(AppColors.textSecondary)
+                                .padding(.horizontal, AppSpacing.md)
+
+                            VStack(spacing: 1) {
+                                Button {
+                                    showDeleteAccount = true
+                                } label: {
+                                    ProfileMenuItem(
+                                        icon: "trash.fill",
+                                        title: "Delete Account",
+                                        iconColor: AppColors.accentRed
+                                    )
+                                }
+                            }
+                            .cardStyle(padding: 0)
+                            .padding(.horizontal, AppSpacing.md)
+                        }
+
+                        // Sign Out
+                        Button {
+                            Task {
+                                try? await supabase.signOut()
+                                dismiss()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.right.square.fill")
+                                    .foregroundColor(AppColors.accentRed)
+                                Text("Sign Out")
+                                    .foregroundColor(AppColors.accentRed)
+                                Spacer()
+                            }
+                            .padding(AppSpacing.md)
+                        }
+                        .cardStyle(padding: 0)
+                        .padding(.horizontal, AppSpacing.md)
+
+                        // Version
+                        Text("Version 1.0.0")
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.textSecondary)
+                            .padding(.top, AppSpacing.lg)
                     }
                 }
             }
@@ -268,9 +450,46 @@ struct ProfileView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .fontWeight(.semibold)
                 }
             }
+            .sheet(isPresented: $showPrivacyPolicy) {
+                PrivacyPolicyView()
+            }
+            .sheet(isPresented: $showDeleteAccount) {
+                DeleteAccountView()
+                    .environment(supabase)
+            }
         }
+    }
+}
+
+// MARK: - Profile Menu Item
+
+struct ProfileMenuItem: View {
+    let icon: String
+    let title: String
+    var iconColor: Color = AppColors.accentBlue
+
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(iconColor)
+                .frame(width: 28)
+
+            Text(title)
+                .font(AppTypography.body)
+                .foregroundColor(AppColors.textPrimary)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(AppColors.textSecondary)
+        }
+        .padding(AppSpacing.md)
+        .background(AppColors.cardBackground)
     }
 }
 
@@ -280,7 +499,7 @@ struct ProfileView: View {
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
         HomeView()
-            .environmentObject(SupabaseClient.shared)
+            .environment(SupabaseManager.shared)
     }
 }
 #endif

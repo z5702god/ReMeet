@@ -3,7 +3,7 @@ import SwiftUI
 struct AddContactView: View {
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AddContactViewModel()
+    @State private var viewModel = AddContactViewModel()
 
     // Optional: callback when contact is saved
     var onSave: (() -> Void)?
@@ -26,7 +26,7 @@ struct AddContactView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         TextField("Company Name", text: $viewModel.companyName)
                             .textContentType(.organizationName)
-                            .onChange(of: viewModel.companyName) { _ in
+                            .onChange(of: viewModel.companyName) { _, _ in
                                 viewModel.clearCompanySelection()
                                 Task {
                                     await viewModel.searchCompanies()
@@ -167,7 +167,7 @@ struct AddContactView: View {
                         .cornerRadius(10)
                 }
             }
-            .onChange(of: viewModel.didSaveSuccessfully) { success in
+            .onChange(of: viewModel.didSaveSuccessfully) { _, success in
                 if success {
                     onSave?()
                     dismiss()

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Re:Meet Logo Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #636e72;
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+
+    .section {
+      margin-bottom: 60px;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #2d3436;
+      margin-bottom: 20px;
+      padding-left: 15px;
+      border-left: 4px solid #6C5CE7;
+    }
+
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+    }
+
+    .logo-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(108, 92, 231, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .logo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 60px rgba(108, 92, 231, 0.15);
+    }
+
+    .logo-card.dark {
+      background: #2d3436;
+    }
+
+    .logo-card img, .logo-card svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .card-label {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #636e72;
+      text-align: center;
+    }
+
+    .dark .card-label {
+      color: #b2bec3;
+    }
+
+    /* Icon sizes preview */
+    .icon-sizes {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+
+    .icon-size {
+      text-align: center;
+    }
+
+    .icon-size img {
+      border-radius: 22%;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .icon-size span {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #636e72;
+    }
+
+    /* Color palette */
+    .color-palette {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      text-align: center;
+    }
+
+    .color-swatch .swatch {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+    }
+
+    .color-swatch span {
+      font-size: 0.85rem;
+      color: #636e72;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .gradient-swatch {
+      width: 200px;
+      height: 80px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #6C5CE7 0%, #A29BFE 100%);
+      box-shadow: 0 5px 20px rgba(108, 92, 231, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Re:Meet</h1>
+    <p class="subtitle">Logo & Brand Assets Preview</p>
+
+    <!-- Full Logo (Universal) -->
+    <div class="section">
+      <h2 class="section-title">Full Logo (Universal - All Gradient)</h2>
+      <div class="logo-grid">
+        <div class="logo-card">
+          <img src="logo-remeet.svg" alt="Re:Meet Logo Light">
+          <p class="card-label">Light Background</p>
+        </div>
+        <div class="logo-card dark">
+          <img src="logo-remeet.svg" alt="Re:Meet Logo Dark">
+          <p class="card-label">Dark Background</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logo Variants -->
+    <div class="section">
+      <h2 class="section-title">Logo Variants (Optimized for Each Background)</h2>
+      <div class="logo-grid">
+        <div class="logo-card">
+          <img src="logo-remeet-light.svg" alt="Re:Meet Logo for Light BG">
+          <p class="card-label">For Light Backgrounds (Meet = Dark)</p>
+        </div>
+        <div class="logo-card dark">
+          <img src="logo-remeet-dark.svg" alt="Re:Meet Logo for Dark BG">
+          <p class="card-label">For Dark Backgrounds (Meet = White)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- App Icon -->
+    <div class="section">
+      <h2 class="section-title">App Icon</h2>
+      <div class="logo-grid">
+        <div class="logo-card">
+          <img src="app-icon.svg" alt="App Icon Full" style="max-width: 300px; margin: 0 auto;">
+          <p class="card-label">Full Detail (1024x1024)</p>
+        </div>
+        <div class="logo-card">
+          <img src="app-icon-simple.svg" alt="App Icon Simple" style="max-width: 300px; margin: 0 auto;">
+          <p class="card-label">Simplified Version</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Icon Sizes -->
+    <div class="section">
+      <h2 class="section-title">Icon Size Preview</h2>
+      <div class="logo-card">
+        <div class="icon-sizes">
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="180px" width="180" height="180">
+            <span>180px (iPhone @3x)</span>
+          </div>
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="120px" width="120" height="120">
+            <span>120px (iPhone @2x)</span>
+          </div>
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="87px" width="87" height="87">
+            <span>87px (Spotlight @3x)</span>
+          </div>
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="60px" width="60" height="60">
+            <span>60px (iPhone @1x)</span>
+          </div>
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="40px" width="40" height="40">
+            <span>40px (Spotlight)</span>
+          </div>
+          <div class="icon-size">
+            <img src="app-icon-simple.svg" alt="29px" width="29" height="29">
+            <span>29px (Settings)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color Palette -->
+    <div class="section">
+      <h2 class="section-title">Brand Colors</h2>
+      <div class="logo-card">
+        <div class="color-palette">
+          <div class="color-swatch">
+            <div class="swatch" style="background: #6C5CE7;"></div>
+            <span>#6C5CE7</span>
+          </div>
+          <div class="color-swatch">
+            <div class="swatch" style="background: #A29BFE;"></div>
+            <span>#A29BFE</span>
+          </div>
+          <div class="color-swatch">
+            <div class="swatch" style="background: #2D3436;"></div>
+            <span>#2D3436</span>
+          </div>
+          <div class="color-swatch">
+            <div class="swatch" style="background: #636E72;"></div>
+            <span>#636E72</span>
+          </div>
+          <div class="color-swatch">
+            <div class="gradient-swatch"></div>
+            <span>Primary Gradient</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

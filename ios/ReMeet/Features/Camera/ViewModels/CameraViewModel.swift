@@ -2,18 +2,38 @@ import SwiftUI
 import AVFoundation
 import Photos
 
+/// Captured card for batch scanning
+struct CapturedCard: Identifiable {
+    let id = UUID()
+    let image: UIImage
+    var imageData: Data?
+    var imageUrl: String?
+}
+
+/// Observable state for camera
+@Observable
+@MainActor
+final class CameraState {
+    var capturedImage: UIImage?
+    var isShowingPreview = false
+    var isUploading = false
+    var uploadProgress: Double = 0
+    var errorMessage: String?
+    var permissionStatus: AVAuthorizationStatus = .notDetermined
+
+    // Batch scanning
+    var capturedCards: [CapturedCard] = []
+    var isBatchMode = true
+    var selectedCardForPreview: CapturedCard?
+}
+
 /// ViewModel for camera functionality
 @MainActor
-class CameraViewModel: NSObject, ObservableObject {
+final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
 
-    // MARK: - Published Properties
+    // MARK: - Observable State
 
-    @Published var capturedImage: UIImage?
-    @Published var isShowingPreview = false
-    @Published var isUploading = false
-    @Published var uploadProgress: Double = 0
-    @Published var errorMessage: String?
-    @Published var permissionStatus: AVAuthorizationStatus = .notDetermined
+    let state = CameraState()
 
     // MARK: - Camera Session
 
@@ -35,9 +55,9 @@ class CameraViewModel: NSObject, ObservableObject {
     // MARK: - Permissions
 
     func checkPermissions() {
-        permissionStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        state.permissionStatus = AVCaptureDevice.authorizationStatus(for: .video)
 
-        switch permissionStatus {
+        switch state.permissionStatus {
         case .notDetermined:
             requestCameraPermission()
         case .authorized:
@@ -51,8 +71,8 @@ class CameraViewModel: NSObject, ObservableObject {
 
     func requestCameraPermission() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-            DispatchQueue.main.async {
-                self?.permissionStatus = granted ? .authorized : .denied
+            Task { @MainActor in
+                self?.state.permissionStatus = granted ? .authorized : .denied
                 if granted {
                     self?.setupCamera()
                 }
@@ -68,7 +88,7 @@ class CameraViewModel: NSObject, ObservableObject {
 
         // Get back camera
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-            errorMessage = "Camera not available"
+            state.errorMessage = "Camera not available"
             session.commitConfiguration()
             return
         }
@@ -90,7 +110,7 @@ class CameraViewModel: NSObject, ObservableObject {
             session.commitConfiguration()
 
         } catch {
-            errorMessage = "Failed to setup camera: \(error.localizedDescription)"
+            state.errorMessage = "Failed to setup camera: \(error.localizedDescription)"
             session.commitConfiguration()
         }
     }
@@ -98,16 +118,16 @@ class CameraViewModel: NSObject, ObservableObject {
     // MARK: - Session Control
 
     func startSession() {
-        guard permissionStatus == .authorized else { return }
+        guard state.permissionStatus == .authorized else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached { [weak self] in
             guard let self = self, !self.session.isRunning else { return }
             self.session.startRunning()
         }
     }
 
     func stopSession() {
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached { [weak self] in
             guard let self = self, self.session.isRunning else { return }
             self.session.stopRunning()
         }
@@ -125,22 +145,22 @@ class CameraViewModel: NSObject, ObservableObject {
     // MARK: - Image Processing
 
     func retakePhoto() {
-        capturedImage = nil
-        isShowingPreview = false
+        state.capturedImage = nil
+        state.isShowingPreview = false
         startSession()
     }
 
     func usePhoto() async -> (imageUrl: String, imageData: Data)? {
-        guard let image = capturedImage else { return nil }
+        guard let image = state.capturedImage else { return nil }
 
-        isUploading = true
-        uploadProgress = 0
-        errorMessage = nil
+        state.isUploading = true
+        state.uploadProgress = 0
+        state.errorMessage = nil
 
         // Compress image
         guard let imageData = compressImage(image) else {
-            errorMessage = "Failed to process image"
-            isUploading = false
+            state.errorMessage = "Failed to process image"
+            state.isUploading = false
             return nil
         }
 
@@ -149,21 +169,21 @@ class CameraViewModel: NSObject, ObservableObject {
         let fileName = "card_\(timestamp).jpg"
 
         do {
-            uploadProgress = 0.5
+            state.uploadProgress = 0.5
 
             let imageUrl = try await supabase.uploadBusinessCard(
                 image: imageData,
                 fileName: fileName
             )
 
-            uploadProgress = 1.0
-            isUploading = false
+            state.uploadProgress = 1.0
+            state.isUploading = false
 
             return (imageUrl, imageData)
 
         } catch {
-            errorMessage = "Upload failed: \(error.localizedDescription)"
-            isUploading = false
+            state.errorMessage = "Upload failed: \(error.localizedDescription)"
+            state.isUploading = false
             return nil
         }
     }
@@ -207,11 +227,77 @@ class CameraViewModel: NSObject, ObservableObject {
     var isFlashOn: Bool {
         currentDevice?.torchMode == .on
     }
-}
 
-// MARK: - AVCapturePhotoCaptureDelegate
+    // MARK: - Batch Scanning
 
-extension CameraViewModel: AVCapturePhotoCaptureDelegate {
+    /// Add current captured image to batch
+    func addToBatch() {
+        guard let image = state.capturedImage else { return }
+
+        let imageData = compressImage(image)
+        let card = CapturedCard(image: image, imageData: imageData, imageUrl: nil)
+        state.capturedCards.append(card)
+
+        // Reset for next capture
+        state.capturedImage = nil
+        state.isShowingPreview = false
+        startSession()
+    }
+
+    /// Add image directly to batch (for simulator/photo picker)
+    func addImageToBatch(_ image: UIImage) {
+        let fixedImage = fixImageOrientation(image)
+        let imageData = compressImage(fixedImage)
+        let card = CapturedCard(image: fixedImage, imageData: imageData, imageUrl: nil)
+        state.capturedCards.append(card)
+    }
+
+    /// Remove card from batch
+    func removeFromBatch(id: UUID) {
+        state.capturedCards.removeAll { $0.id == id }
+        state.selectedCardForPreview = nil
+    }
+
+    /// Clear all captured cards
+    func clearBatch() {
+        state.capturedCards.removeAll()
+        state.selectedCardForPreview = nil
+    }
+
+    /// Get cards for batch editing
+    func finishBatch() -> [CapturedCard] {
+        let cards = state.capturedCards
+        return cards
+    }
+
+    /// Upload all cards in batch
+    func uploadBatchCards() async -> [CapturedCard] {
+        var uploadedCards: [CapturedCard] = []
+
+        for var card in state.capturedCards {
+            guard let imageData = card.imageData else { continue }
+
+            let timestamp = Int(Date().timeIntervalSince1970)
+            let fileName = "card_\(timestamp)_\(card.id.uuidString.prefix(8)).jpg"
+
+            do {
+                let imageUrl = try await supabase.uploadBusinessCard(
+                    image: imageData,
+                    fileName: fileName
+                )
+                card.imageUrl = imageUrl
+                uploadedCards.append(card)
+            } catch {
+                print("Failed to upload card: \(error)")
+                // Still add to list without URL
+                uploadedCards.append(card)
+            }
+        }
+
+        return uploadedCards
+    }
+
+    // MARK: - AVCapturePhotoCaptureDelegate
 
     nonisolated func photoOutput(
         _ output: AVCapturePhotoOutput,
@@ -220,25 +306,32 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
     ) {
         Task { @MainActor in
             if let error = error {
-                self.errorMessage = "Photo capture error: \(error.localizedDescription)"
+                self.state.errorMessage = "Photo capture error: \(error.localizedDescription)"
                 return
             }
 
             guard let imageData = photo.fileDataRepresentation(),
                   let image = UIImage(data: imageData) else {
-                self.errorMessage = "Failed to process photo"
+                self.state.errorMessage = "Failed to process photo"
                 return
             }
 
             // Fix orientation
             let fixedImage = fixImageOrientation(image)
-            self.capturedImage = fixedImage
-            self.isShowingPreview = true
-            self.stopSession()
+
+            if self.state.isBatchMode {
+                // Batch mode: add directly to list
+                self.addImageToBatch(fixedImage)
+            } else {
+                // Single mode: show preview
+                self.state.capturedImage = fixedImage
+                self.state.isShowingPreview = true
+                self.stopSession()
+            }
         }
     }
 
-    private func fixImageOrientation(_ image: UIImage) -> UIImage {
+    private nonisolated func fixImageOrientation(_ image: UIImage) -> UIImage {
         guard image.imageOrientation != .up else { return image }
 
         UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)

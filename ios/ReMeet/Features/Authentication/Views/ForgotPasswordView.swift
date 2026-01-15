@@ -3,77 +3,89 @@ import SwiftUI
 struct ForgotPasswordView: View {
 
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AuthViewModel()
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var viewModel = AuthViewModel()
+    @State private var headerScale: CGFloat = 0.9
+    @State private var formOpacity: Double = 0
 
     var body: some View {
         NavigationView {
             ZStack {
-                // Background gradient
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.6), Color.cyan.opacity(0.6)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background gradient - uses DesignSystem
+                AppColors.authGradient(colorScheme: colorScheme)
+                    .ignoresSafeArea()
 
-                VStack(spacing: 30) {
+                VStack(spacing: AppSpacing.xl) {
                     Spacer()
 
-                    // Header
-                    VStack(spacing: 16) {
-                        Image(systemName: "key.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.white)
+                    // Header with animation
+                    VStack(spacing: AppSpacing.md) {
+                        ReMeetLogo(size: 100, showText: false)
 
                         Text("Reset Password")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(AppTypography.largeTitle)
                             .foregroundColor(.white)
 
                         Text("Enter your email address and we'll send you a link to reset your password")
-                            .font(.subheadline)
+                            .font(AppTypography.subheadline)
                             .foregroundColor(.white.opacity(0.9))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 40)
                     }
-
-                    // Email field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-
-                        TextField("", text: $viewModel.email)
-                            .textFieldStyle(ReMeetTextFieldStyle(icon: "envelope"))
-                            .textContentType(.emailAddress)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                    }
-                    .padding(.horizontal, 30)
-
-                    // Send reset link button
-                    Button {
-                        Task {
-                            await viewModel.resetPassword()
+                    .scaleEffect(headerScale)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                            headerScale = 1.0
                         }
-                    } label: {
-                        HStack {
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                            } else {
-                                Text("Send Reset Link")
-                                    .fontWeight(.semibold)
+                    }
+
+                    // Form with fade-in animation
+                    VStack(spacing: AppSpacing.lg) {
+                        // Email field
+                        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                            Text("Email")
+                                .font(AppTypography.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+
+                            TextField("", text: $viewModel.email)
+                                .textFieldStyle(ReMeetTextFieldStyle(icon: "envelope"))
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                        }
+
+                        // Send reset link button
+                        Button {
+                            Task {
+                                await viewModel.resetPassword()
                             }
+                        } label: {
+                            HStack {
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: AppColors.accentPurple))
+                                } else {
+                                    Text("Send Reset Link")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.white.opacity(viewModel.isEmailValid ? 1.0 : 0.5))
+                            .foregroundColor(AppColors.accentPurple)
+                            .cornerRadius(AppCornerRadius.medium)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.white.opacity(viewModel.isEmailValid ? 1.0 : 0.5))
-                        .foregroundColor(.blue)
-                        .cornerRadius(12)
+                        .disabled(!viewModel.isEmailValid || viewModel.isLoading)
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.isEmailValid)
                     }
-                    .disabled(!viewModel.isEmailValid || viewModel.isLoading)
                     .padding(.horizontal, 30)
+                    .opacity(formOpacity)
+                    .onAppear {
+                        withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+                            formOpacity = 1.0
+                        }
+                    }
 
                     Spacer()
                     Spacer()
@@ -87,6 +99,7 @@ struct ForgotPasswordView: View {
                     } label: {
                         Image(systemName: "xmark")
                             .foregroundColor(.white)
+                            .fontWeight(.medium)
                     }
                 }
             }
@@ -111,7 +124,12 @@ struct ForgotPasswordView: View {
 #if DEBUG
 struct ForgotPasswordView_Previews: PreviewProvider {
     static var previews: some View {
-        ForgotPasswordView()
+        Group {
+            ForgotPasswordView()
+                .preferredColorScheme(.light)
+            ForgotPasswordView()
+                .preferredColorScheme(.dark)
+        }
     }
 }
 #endif

@@ -8,6 +8,10 @@
 credentials.json
 private-key.json
 
+# iOS Configuration with API Keys
+ios/ReMeet/Config.xcconfig
+Config.xcconfig
+
 # Xcode
 .DS_Store
 *.xcodeproj/*

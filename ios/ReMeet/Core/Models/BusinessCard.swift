@@ -44,10 +44,9 @@ struct BusinessCard: Codable, Identifiable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
 
-        // Decode JSON object
-        if let rawData = try container.decodeIfPresent(Data.self, forKey: .ocrRawData) {
-            ocrRawData = try? JSONSerialization.jsonObject(with: rawData) as? [String: Any]
-        }
+        // Skip ocrRawData decoding - JSONB from Supabase is not compatible with Data type
+        // This field is not currently used in the app
+        ocrRawData = nil
     }
 
     // Memberwise initializer for creating new instances
@@ -73,6 +72,22 @@ struct BusinessCard: Codable, Identifiable {
         self.ocrProcessedAt = ocrProcessedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+
+    // Custom encode implementation for [String: Any]
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(userId, forKey: .userId)
+        try container.encode(imageUrl, forKey: .imageUrl)
+        try container.encodeIfPresent(imageFrontUrl, forKey: .imageFrontUrl)
+        try container.encodeIfPresent(imageBackUrl, forKey: .imageBackUrl)
+        try container.encode(ocrStatus, forKey: .ocrStatus)
+        try container.encodeIfPresent(ocrProcessedAt, forKey: .ocrProcessedAt)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+
+        // Skip ocrRawData encoding - not used in the app
     }
 }
 

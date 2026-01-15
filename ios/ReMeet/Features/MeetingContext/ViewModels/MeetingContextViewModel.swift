@@ -2,30 +2,38 @@ import Foundation
 import SwiftUI
 
 /// ViewModel for meeting context input
+@Observable
 @MainActor
-class MeetingContextViewModel: ObservableObject {
+final class MeetingContextViewModel {
 
     // MARK: - Form Fields
 
-    @Published var meetingDate = Date()
-    @Published var locationName = ""
-    @Published var locationAddress = ""
-    @Published var eventName = ""
-    @Published var occasionType: OccasionType = .networking
-    @Published var relationshipType: RelationshipType = .contact
-    @Published var notes = ""
-    @Published var followUpRequired = false
-    @Published var followUpDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+    var meetingDate = Date()
+    var locationName = ""
+    var locationAddress = ""
+    var eventName = ""
+    var occasionType: OccasionType = .networking
+    var relationshipType: RelationshipType = .contact
+    var notes = ""
+    var followUpRequired = false
+    var followUpDate: Date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
 
     // MARK: - State
 
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var didSaveSuccessfully = false
+    var isLoading = false
+    var errorMessage: String?
+    var didSaveSuccessfully = false
 
     // MARK: - Dependencies
 
     private let supabase = SupabaseManager.shared
+
+    /// Time formatter for PostgreSQL time type (HH:mm:ss)
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }
 
     // MARK: - Validation
 
@@ -48,7 +56,7 @@ class MeetingContextViewModel: ObservableObject {
             userId: userId,
             contactId: contactId,
             meetingDate: meetingDate,
-            meetingTime: meetingDate,
+            meetingTime: timeFormatter.string(from: meetingDate),
             locationName: locationName.isEmpty ? nil : locationName.trimmingCharacters(in: .whitespaces),
             locationAddress: locationAddress.isEmpty ? nil : locationAddress.trimmingCharacters(in: .whitespaces),
             locationLat: nil,
