@@ -50,8 +50,7 @@ playground.xcworkspace
 .build/
 Packages/
 Package.pins
-Package.resolved 
-*.xcodeproj
+Package.resolved
 
 # CocoaPods
 Pods/
