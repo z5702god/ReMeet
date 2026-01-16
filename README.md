@@ -46,7 +46,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ReMeet.git
+   git clone https://github.com/z5702god/ReMeet.git
    cd ReMeet
    ```
 
@@ -111,28 +111,40 @@ ReMeet/
 
 ## 🗺 Roadmap
 
-### Phase 1: MVP (2-3 weeks) ✅
-- [x] Authentication system
-- [x] Basic UI structure
+### Phase 1: MVP ✅
+- [x] Authentication system (Login, Register, Forgot Password)
+- [x] Basic UI structure (SwiftUI + MVVM)
 - [x] Supabase integration
-- [ ] Manual contact entry
-- [ ] Camera functionality
+- [x] Manual contact entry
+- [x] Camera functionality
 
-### Phase 2: OCR Integration (3-4 weeks)
-- [ ] n8n workflow setup
-- [ ] OCR processing pipeline
-- [ ] Edit OCR results
+### Phase 2: OCR Integration ✅
+- [x] Supabase Edge Function for OCR
+- [x] Google Cloud Vision API integration
+- [x] OCR processing pipeline
+- [x] Edit OCR results (BatchEditView)
 
-### Phase 3: AI Features (4-5 weeks)
-- [ ] AI chat interface
-- [ ] Context extraction
-- [ ] Smart search
+### Phase 3: AI Features ✅
+- [x] AI chat interface
+- [x] n8n workflow for AI queries
+- [x] Context extraction (meeting date, location, event)
+- [x] Smart search by date, company, location
 
-### Phase 4: Polish (3-4 weeks)
-- [ ] Company management
-- [ ] Timeline view
-- [ ] Performance optimization
-- [ ] Testing
+### Phase 4: Polish ✅
+- [x] Company management
+- [x] Timeline view (chronological browsing)
+- [x] Delete account functionality
+- [x] Privacy policy integration
+- [x] Dark mode support
+- [x] Security improvements (API keys server-side)
+
+### Phase 5: App Store Submission 🚀 (In Progress)
+- [x] App Icon (1024x1024)
+- [x] App Store content prepared
+- [x] Demo account for reviewers
+- [ ] Apple Developer Program activation (pending)
+- [ ] TestFlight beta testing
+- [ ] App Store submission
 
 ## 🔐 Security
 
@@ -164,10 +176,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-Project Link: [https://github.com/YOUR_USERNAME/ReMeet](https://github.com/YOUR_USERNAME/ReMeet)
+Project Link: [https://github.com/z5702god/ReMeet](https://github.com/z5702god/ReMeet)
 
 ---
 
-**Status**: In Development (50% complete)
-**Last Updated**: 2026-01-11
-**Version**: 1.0.0-alpha
+**Status**: Ready for App Store Submission (95% complete)
+**Last Updated**: 2026-01-16
+**Version**: 1.0.0
