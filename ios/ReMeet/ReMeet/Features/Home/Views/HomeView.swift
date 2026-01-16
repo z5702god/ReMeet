@@ -122,8 +122,10 @@ struct HomeView: View {
                     }
                 }
             }
-            .onAppear {
-                Task {
+            .task(id: supabase.currentUser?.id) {
+                // Load contacts when user is loaded (not just authenticated)
+                // currentUser is loaded after isAuthenticated is set, so we need to wait for it
+                if supabase.currentUser != nil {
                     await viewModel.loadContacts()
                 }
             }
