@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "n8n-mcp",
+      "env": {
+        "N8N_API_URL": "https://lukelu.zeabur.app/api/v1",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMmM1ZGM4MC1kNmQ0LTRjNzItOGZiZC03ZDU5MWE0YjY3N2YiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY4NDgzNjM1fQ.I2YUxRbrOITCb8Mfmk9OHrKPLMN9r7cIL0d9gVNOqcw"
+      }
+    }
+  }
+}

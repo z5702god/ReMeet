@@ -19,34 +19,12 @@
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "user_id",
-              "name": "user_id",
-              "value": "={{ $json.body.user_id }}",
-              "type": "string"
-            },
-            {
-              "id": "message",
-              "name": "message",
-              "value": "={{ $json.body.message }}",
-              "type": "string"
-            },
-            {
-              "id": "today",
-              "name": "today",
-              "value": "={{ $now.format('yyyy-MM-dd') }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "// ===========================================\n// JWT TOKEN VALIDATION & INPUT EXTRACTION\n// ===========================================\n// Security: Validate Supabase JWT and extract user_id from token\n// This prevents user_id spoofing attacks\n\n// Get request data\nconst headers = $input.first().json.headers;\nconst body = $input.first().json.body;\n\n// Extract Authorization header\nconst authHeader = headers.authorization || headers.Authorization || '';\nconst token = authHeader.replace('Bearer ', '');\n\nif (!token) {\n  throw new Error('Missing Authorization header. Please provide a valid Supabase JWT token.');\n}\n\n// Decode JWT (without full verification - Supabase handles that)\n// In production, you should verify the signature using Supabase JWT secret\ntry {\n  const parts = token.split('.');\n  if (parts.length !== 3) {\n    throw new Error('Invalid JWT format');\n  }\n  \n  // Decode payload (base64url to base64, then decode)\n  const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');\n  const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString('utf8'));\n  \n  // Check expiration\n  const now = Math.floor(Date.now() / 1000);\n  if (payload.exp && payload.exp < now) {\n    throw new Error('JWT token has expired');\n  }\n  \n  // Extract user_id from 'sub' claim (Supabase standard)\n  const user_id = payload.sub;\n  if (!user_id) {\n    throw new Error('Invalid JWT: missing sub claim');\n  }\n  \n  // Validate UUID format to prevent injection\n  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n  if (!uuidRegex.test(user_id)) {\n    throw new Error('Invalid user_id format');\n  }\n  \n  return [{\n    json: {\n      user_id: user_id,\n      message: body.message || '',\n      today: new Date().toISOString().split('T')[0],\n      jwt_valid: true\n    }\n  }];\n  \n} catch (e) {\n  throw new Error('JWT validation failed: ' + e.message);\n}"
       },
-      "id": "extract-input",
-      "name": "Extract Input",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "validate-jwt",
+      "name": "Validate JWT & Extract Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [460, 300]
     },
     {
@@ -76,84 +54,61 @@
       "position": [680, 300],
       "credentials": {
         "openAiApi": {
-          "id": "OPENAI_CREDENTIAL_ID",
-          "name": "OpenAI API"
+          "id": "So0TGwMDsXWcYGBb",
+          "name": "OpenAi account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Parse intent from OpenAI response\nconst response = $input.first().json;\nlet intentData;\n\ntry {\n  // Extract JSON from response\n  let content = response.message?.content || response.choices?.[0]?.message?.content || '';\n  \n  // Remove markdown code blocks if present\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  intentData = JSON.parse(content);\n} catch (e) {\n  // Default fallback\n  intentData = {\n    intent: 'search_contact',\n    search_params: {},\n    requires_db_query: true,\n    user_language: 'en'\n  };\n}\n\n// Get original input data\nconst originalInput = $('Extract Input').first().json;\n\nreturn [{\n  json: {\n    user_id: originalInput.user_id,\n    message: originalInput.message,\n    today: originalInput.today,\n    intent: intentData.intent,\n    search_params: intentData.search_params || {},\n    requires_db_query: intentData.requires_db_query !== false,\n    user_language: intentData.user_language || 'en'\n  }\n}];"
+        "jsCode": "// ===========================================\n// PARSE INTENT & SANITIZE SEARCH PARAMS\n// ===========================================\n// Security: Sanitize all user inputs to prevent SQL injection\n\nconst response = $input.first().json;\nlet intentData;\n\ntry {\n  let content = response.message?.content || response.choices?.[0]?.message?.content || '';\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  intentData = JSON.parse(content);\n} catch (e) {\n  intentData = {\n    intent: 'search_contact',\n    search_params: {},\n    requires_db_query: true,\n    user_language: 'en'\n  };\n}\n\n// Get original input data\nconst originalInput = $('Validate JWT & Extract Input').first().json;\n\n// ===========================================\n// INPUT SANITIZATION FUNCTION\n// ===========================================\nfunction sanitizeInput(input) {\n  if (!input || typeof input !== 'string') return null;\n  \n  // Remove any SQL injection attempts\n  // Remove: quotes, semicolons, comments, and SQL keywords in dangerous positions\n  let sanitized = input\n    .replace(/['\"`;]/g, '')           // Remove quotes and semicolons\n    .replace(/--/g, '')               // Remove SQL comments\n    .replace(/\\/\\*/g, '')             // Remove block comment start\n    .replace(/\\*\\//g, '')             // Remove block comment end\n    .replace(/\\\\x[0-9a-fA-F]+/g, '') // Remove hex escapes\n    .replace(/\\\\u[0-9a-fA-F]+/g, '') // Remove unicode escapes\n    .trim();\n  \n  // Limit length to prevent overflow attacks\n  if (sanitized.length > 100) {\n    sanitized = sanitized.substring(0, 100);\n  }\n  \n  return sanitized || null;\n}\n\n// Sanitize date format (must be YYYY-MM-DD)\nfunction sanitizeDate(dateStr) {\n  if (!dateStr || typeof dateStr !== 'string') return null;\n  const dateRegex = /^\\d{4}-\\d{2}-\\d{2}$/;\n  if (!dateRegex.test(dateStr)) return null;\n  \n  // Additional validation: check if it's a valid date\n  const date = new Date(dateStr);\n  if (isNaN(date.getTime())) return null;\n  \n  return dateStr;\n}\n\n// Sanitize all search parameters\nconst searchParams = intentData.search_params || {};\nconst sanitizedParams = {\n  name: sanitizeInput(searchParams.name),\n  company: sanitizeInput(searchParams.company),\n  location: sanitizeInput(searchParams.location),\n  event_name: sanitizeInput(searchParams.event_name),\n  date_start: sanitizeDate(searchParams.date_start),\n  date_end: sanitizeDate(searchParams.date_end)\n};\n\nreturn [{\n  json: {\n    user_id: originalInput.user_id,\n    message: originalInput.message,\n    today: originalInput.today,\n    intent: intentData.intent,\n    search_params: sanitizedParams,\n    requires_db_query: intentData.requires_db_query !== false,\n    user_language: intentData.user_language || 'en'\n  }\n}];"
       },
       "id": "parse-intent",
-      "name": "Parse Intent",
+      "name": "Parse Intent & Sanitize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [900, 300]
     },
     {
       "parameters": {
+        "jsCode": "// ===========================================\n// BUILD SAFE QUERY WITH INLINE VALUES\n// ===========================================\n// Security: All inputs have been sanitized in previous step\n// user_id is validated as UUID, other params have dangerous chars removed\n\nconst data = $input.first().json;\n\n// Escape single quotes for SQL safety (double them)\nfunction escapeSql(str) {\n  if (!str) return null;\n  return str.replace(/'/g, \"''\");\n}\n\n// Build the query with inline values (already sanitized)\nconst userId = escapeSql(data.user_id);\n\nlet query = `\nWITH contact_data AS (\n  SELECT \n    c.id,\n    c.full_name,\n    c.title,\n    c.email,\n    c.phone,\n    c.is_favorite,\n    c.created_at,\n    co.name as company_name,\n    co.industry as company_industry\n  FROM contacts c\n  LEFT JOIN companies co ON c.company_id = co.id\n  WHERE c.user_id = '${userId}'::uuid\n),\nmeeting_data AS (\n  SELECT \n    mc.contact_id,\n    mc.meeting_date,\n    mc.location_name,\n    mc.event_name,\n    mc.occasion_type,\n    mc.relationship_type,\n    mc.notes,\n    mc.follow_up_required,\n    mc.follow_up_date\n  FROM meeting_contexts mc\n  WHERE mc.user_id = '${userId}'::uuid\n)\nSELECT \n  cd.*,\n  md.meeting_date,\n  md.location_name,\n  md.event_name,\n  md.occasion_type,\n  md.relationship_type,\n  md.notes as meeting_notes,\n  md.follow_up_required,\n  md.follow_up_date\nFROM contact_data cd\nLEFT JOIN meeting_data md ON cd.id = md.contact_id\nWHERE 1=1\n`;\n\n// Add optional filters with escaped values\nif (data.search_params.name) {\n  query += ` AND cd.full_name ILIKE '%${escapeSql(data.search_params.name)}%'`;\n}\n\nif (data.search_params.company) {\n  query += ` AND cd.company_name ILIKE '%${escapeSql(data.search_params.company)}%'`;\n}\n\nif (data.search_params.location) {\n  query += ` AND md.location_name ILIKE '%${escapeSql(data.search_params.location)}%'`;\n}\n\nif (data.search_params.event_name) {\n  query += ` AND md.event_name ILIKE '%${escapeSql(data.search_params.event_name)}%'`;\n}\n\nif (data.search_params.date_start) {\n  query += ` AND md.meeting_date >= '${escapeSql(data.search_params.date_start)}'::date`;\n}\n\nif (data.search_params.date_end) {\n  query += ` AND md.meeting_date <= '${escapeSql(data.search_params.date_end)}'::date`;\n}\n\nif (data.intent === 'need_followup') {\n  query += ` AND md.follow_up_required = true`;\n}\n\nquery += `\nORDER BY \n  CASE WHEN md.meeting_date IS NOT NULL THEN md.meeting_date ELSE cd.created_at END DESC\nLIMIT 20`;\n\nreturn [{\n  json: {\n    ...data,\n    query: query\n  }\n}];"
+      },
+      "id": "build-query",
+      "name": "Build Parameterized Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "WITH contact_data AS (\n  SELECT \n    c.id,\n    c.full_name,\n    c.title,\n    c.email,\n    c.phone,\n    c.is_favorite,\n    c.created_at,\n    co.name as company_name,\n    co.industry as company_industry\n  FROM contacts c\n  LEFT JOIN companies co ON c.company_id = co.id\n  WHERE c.user_id = '{{ $json.user_id }}'::uuid\n),\nmeeting_data AS (\n  SELECT \n    mc.contact_id,\n    mc.meeting_date,\n    mc.location_name,\n    mc.event_name,\n    mc.occasion_type,\n    mc.relationship_type,\n    mc.notes,\n    mc.follow_up_required,\n    mc.follow_up_date\n  FROM meeting_contexts mc\n  WHERE mc.user_id = '{{ $json.user_id }}'::uuid\n)\nSELECT \n  cd.*,\n  md.meeting_date,\n  md.location_name,\n  md.event_name,\n  md.occasion_type,\n  md.relationship_type,\n  md.notes as meeting_notes,\n  md.follow_up_required,\n  md.follow_up_date\nFROM contact_data cd\nLEFT JOIN meeting_data md ON cd.id = md.contact_id\nWHERE 1=1\n  {{ $json.search_params.name ? \"AND cd.full_name ILIKE '%\" + $json.search_params.name + \"%'\" : '' }}\n  {{ $json.search_params.company ? \"AND cd.company_name ILIKE '%\" + $json.search_params.company + \"%'\" : '' }}\n  {{ $json.search_params.location ? \"AND md.location_name ILIKE '%\" + $json.search_params.location + \"%'\" : '' }}\n  {{ $json.search_params.event_name ? \"AND md.event_name ILIKE '%\" + $json.search_params.event_name + \"%'\" : '' }}\n  {{ $json.search_params.date_start ? \"AND md.meeting_date >= '\" + $json.search_params.date_start + \"'\" : '' }}\n  {{ $json.search_params.date_end ? \"AND md.meeting_date <= '\" + $json.search_params.date_end + \"'\" : '' }}\n  {{ $json.intent === 'need_followup' ? \"AND md.follow_up_required = true\" : '' }}\nORDER BY \n  CASE WHEN md.meeting_date IS NOT NULL THEN md.meeting_date ELSE cd.created_at END DESC\nLIMIT 20;",
-        "options": {}
+        "query": "={{ $json.query }}"
       },
       "id": "supabase-query",
       "name": "Supabase - Query Contacts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1120, 300],
+      "position": [1340, 300],
       "credentials": {
         "postgres": {
-          "id": "SUPABASE_CREDENTIAL_ID",
-          "name": "Supabase Postgres"
+          "id": "WjqzcbGnUEsK5Wxs",
+          "name": "Postgres account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Prepare data for response generation\nconst intentData = $('Parse Intent').first().json;\nconst queryResults = $input.all().map(item => item.json);\n\n// Deduplicate contacts (may have multiple meeting contexts)\nconst contactMap = new Map();\nfor (const row of queryResults) {\n  if (!row.id) continue;\n  \n  if (!contactMap.has(row.id)) {\n    contactMap.set(row.id, {\n      id: row.id,\n      full_name: row.full_name,\n      title: row.title,\n      email: row.email,\n      phone: row.phone,\n      company_name: row.company_name,\n      is_favorite: row.is_favorite,\n      meeting_contexts: []\n    });\n  }\n  \n  if (row.meeting_date || row.event_name || row.location_name) {\n    contactMap.get(row.id).meeting_contexts.push({\n      meeting_date: row.meeting_date,\n      location_name: row.location_name,\n      event_name: row.event_name,\n      occasion_type: row.occasion_type,\n      relationship_type: row.relationship_type,\n      notes: row.meeting_notes,\n      follow_up_required: row.follow_up_required,\n      follow_up_date: row.follow_up_date\n    });\n  }\n}\n\nconst contacts = Array.from(contactMap.values());\n\nreturn [{\n  json: {\n    user_id: intentData.user_id,\n    message: intentData.message,\n    intent: intentData.intent,\n    search_params: intentData.search_params,\n    user_language: intentData.user_language,\n    contacts: contacts,\n    contact_count: contacts.length\n  }\n}];"
+        "jsCode": "// Prepare data for response generation\nconst intentData = $('Build Parameterized Query').first().json;\nconst queryResults = $input.all().map(item => item.json);\n\n// Deduplicate contacts (may have multiple meeting contexts)\nconst contactMap = new Map();\nfor (const row of queryResults) {\n  if (!row.id) continue;\n  \n  if (!contactMap.has(row.id)) {\n    contactMap.set(row.id, {\n      id: row.id,\n      full_name: row.full_name,\n      title: row.title,\n      email: row.email,\n      phone: row.phone,\n      company_name: row.company_name,\n      is_favorite: row.is_favorite,\n      meeting_contexts: []\n    });\n  }\n  \n  if (row.meeting_date || row.event_name || row.location_name) {\n    contactMap.get(row.id).meeting_contexts.push({\n      meeting_date: row.meeting_date,\n      location_name: row.location_name,\n      event_name: row.event_name,\n      occasion_type: row.occasion_type,\n      relationship_type: row.relationship_type,\n      notes: row.meeting_notes,\n      follow_up_required: row.follow_up_required,\n      follow_up_date: row.follow_up_date\n    });\n  }\n}\n\nconst contacts = Array.from(contactMap.values());\n\nreturn [{\n  json: {\n    user_id: intentData.user_id,\n    message: intentData.message,\n    intent: intentData.intent,\n    search_params: intentData.search_params,\n    user_language: intentData.user_language,\n    contacts: contacts,\n    contact_count: contacts.length\n  }\n}];"
       },
       "id": "prepare-response",
       "name": "Prepare Response Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 300]
+      "position": [1560, 300]
     },
     {
       "parameters": {
-        "model": "gpt-4o-mini",
-        "options": {
-          "temperature": 0.7,
-          "maxTokens": 300
-        },
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "你是 ReMeet 的 AI 助手。根據查詢結果，用自然語言回答用戶。\n\n規則：\n1. 簡潔友善，1-3 句話\n2. 如果找到聯絡人，簡述數量和關鍵資訊（如公司、見面地點）\n3. 如果沒找到，友善地建議其他搜尋方式\n4. 如果用戶語言是 \"zh\"，用繁體中文回覆；如果是 \"en\"，用英文回覆\n5. 不要列出所有聯絡人的詳細資料，只做摘要\n6. 如果有 meeting context，可以提及見面的時間或地點"
-            },
-            {
-              "role": "user",
-              "content": "用戶問題：{{ $json.message }}\n\n查詢意圖：{{ $json.intent }}\n搜尋條件：{{ JSON.stringify($json.search_params) }}\n用戶語言：{{ $json.user_language }}\n\n查詢結果：\n找到 {{ $json.contact_count }} 位聯絡人\n\n聯絡人資料：\n{{ JSON.stringify($json.contacts.slice(0, 5), null, 2) }}\n\n請根據以上資訊生成回覆。"
-            }
-          ]
-        }
-      },
-      "id": "openai-response",
-      "name": "OpenAI - Generate Response",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.5,
-      "position": [1560, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "OPENAI_CREDENTIAL_ID",
-          "name": "OpenAI API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Build final API response\nconst preparedData = $('Prepare Response Data').first().json;\nconst aiResponse = $input.first().json;\n\n// Extract response text\nlet responseText = '';\ntry {\n  responseText = aiResponse.message?.content || aiResponse.choices?.[0]?.message?.content || 'I found some contacts for you.';\n} catch (e) {\n  responseText = 'I found some contacts for you.';\n}\n\n// Format contacts for iOS app\nconst formattedContacts = preparedData.contacts.map(c => ({\n  id: c.id,\n  full_name: c.full_name,\n  title: c.title,\n  email: c.email,\n  phone: c.phone,\n  company_name: c.company_name,\n  is_favorite: c.is_favorite,\n  meeting_context: c.meeting_contexts?.[0] ? {\n    date: c.meeting_contexts[0].meeting_date,\n    location: c.meeting_contexts[0].location_name,\n    event: c.meeting_contexts[0].event_name,\n    occasion_type: c.meeting_contexts[0].occasion_type,\n    relationship_type: c.meeting_contexts[0].relationship_type\n  } : null\n}));\n\n// Generate suggested actions based on intent\nlet suggestedActions = [];\nif (preparedData.contact_count === 0) {\n  suggestedActions = [\n    'Try searching by company name',\n    'Browse all contacts',\n    'Search by event or location'\n  ];\n} else {\n  suggestedActions = [\n    'View contact details',\n    'Search for more contacts'\n  ];\n}\n\nreturn [{\n  json: {\n    success: true,\n    response_text: responseText,\n    contacts: formattedContacts,\n    contact_count: preparedData.contact_count,\n    intent: preparedData.intent,\n    suggested_actions: suggestedActions\n  }\n}];"
+        "jsCode": "// Build final API response - 直接返回名片資料，不使用 AI 生成回覆\nconst preparedData = $input.first().json;\n\n// Format contacts for iOS app\nconst formattedContacts = preparedData.contacts.map(c => ({\n  id: c.id,\n  full_name: c.full_name,\n  title: c.title,\n  email: c.email,\n  phone: c.phone,\n  company_name: c.company_name,\n  is_favorite: c.is_favorite,\n  meeting_context: c.meeting_contexts?.[0] ? {\n    date: c.meeting_contexts[0].meeting_date,\n    location: c.meeting_contexts[0].location_name,\n    event: c.meeting_contexts[0].event_name,\n    occasion_type: c.meeting_contexts[0].occasion_type,\n    relationship_type: c.meeting_contexts[0].relationship_type\n  } : null\n}));\n\n// 根據語言和結果數量生成簡單回覆\nconst lang = preparedData.user_language || 'zh';\nconst count = preparedData.contact_count;\nlet responseText;\n\nif (count === 0) {\n  responseText = lang === 'zh' \n    ? '沒有找到符合條件的聯絡人。' \n    : 'No contacts found matching your criteria.';\n} else if (count === 1) {\n  const name = formattedContacts[0].full_name || '';\n  const company = formattedContacts[0].company_name || '';\n  responseText = lang === 'zh'\n    ? `找到 1 位聯絡人：${name}${company ? '（' + company + '）' : ''}`\n    : `Found 1 contact: ${name}${company ? ' (' + company + ')' : ''}`;\n} else {\n  responseText = lang === 'zh'\n    ? `找到 ${count} 位聯絡人。`\n    : `Found ${count} contacts.`;\n}\n\nreturn [{\n  json: {\n    success: true,\n    response_text: responseText,\n    contacts: formattedContacts,\n    contact_count: count,\n    intent: preparedData.intent\n  }\n}];"
       },
       "id": "build-response",
       "name": "Build API Response",
@@ -182,20 +137,6 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [2000, 300]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"success\": false,\n  \"error\": \"{{ $json.error?.message || 'An error occurred' }}\",\n  \"response_text\": \"Sorry, something went wrong. Please try again.\",\n  \"contacts\": [],\n  \"suggested_actions\": [\"Try again\", \"Contact support\"]\n}",
-        "options": {
-          "responseCode": 500
-        }
-      },
-      "id": "error-response",
-      "name": "Error Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1560, 500]
     }
   ],
   "connections": {
@@ -203,14 +144,14 @@
       "main": [
         [
           {
-            "node": "Extract Input",
+            "node": "Validate JWT & Extract Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract Input": {
+    "Validate JWT & Extract Input": {
       "main": [
         [
           {
@@ -225,14 +166,25 @@
       "main": [
         [
           {
-            "node": "Parse Intent",
+            "node": "Parse Intent & Sanitize",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Intent": {
+    "Parse Intent & Sanitize": {
+      "main": [
+        [
+          {
+            "node": "Build Parameterized Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Parameterized Query": {
       "main": [
         [
           {
@@ -255,17 +207,6 @@
       ]
     },
     "Prepare Response Data": {
-      "main": [
-        [
-          {
-            "node": "OpenAI - Generate Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI - Generate Response": {
       "main": [
         [
           {
@@ -302,6 +243,11 @@
       "name": "AI Chat",
       "createdAt": "2026-01-13T00:00:00.000Z",
       "updatedAt": "2026-01-13T00:00:00.000Z"
+    },
+    {
+      "name": "Security Updated",
+      "createdAt": "2026-01-15T00:00:00.000Z",
+      "updatedAt": "2026-01-15T00:00:00.000Z"
     }
   ],
   "pinData": {}

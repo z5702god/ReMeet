@@ -6,13 +6,32 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A34D758C2F18944A00F3FF29 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = A34D758B2F18944A00F3FF29 /* FirebaseAnalytics */; };
+		A34D758E2F18944A00F3FF29 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A34D758D2F18944A00F3FF29 /* FirebaseCrashlytics */; };
+		A34D75912F1894BC00F3FF29 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = A34D75902F1894BC00F3FF29 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		A34D750B2F1892C800F3FF29 /* ReMeet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReMeet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A34D75892F1893F200F3FF29 /* Exceptions for "ReMeet" folder in "ReMeet" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/Info.plist,
+			);
+			target = A34D750A2F1892C800F3FF29 /* ReMeet */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A34D750D2F1892C800F3FF29 /* ReMeet */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A34D75892F1893F200F3FF29 /* Exceptions for "ReMeet" folder in "ReMeet" target */,
+			);
 			path = ReMeet;
 			sourceTree = "<group>";
 		};
@@ -23,6 +42,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A34D758C2F18944A00F3FF29 /* FirebaseAnalytics in Frameworks */,
+				A34D758E2F18944A00F3FF29 /* FirebaseCrashlytics in Frameworks */,
+				A34D75912F1894BC00F3FF29 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +87,9 @@
 			);
 			name = ReMeet;
 			packageProductDependencies = (
+				A34D758B2F18944A00F3FF29 /* FirebaseAnalytics */,
+				A34D758D2F18944A00F3FF29 /* FirebaseCrashlytics */,
+				A34D75902F1894BC00F3FF29 /* Supabase */,
 			);
 			productName = ReMeet;
 			productReference = A34D750B2F1892C800F3FF29 /* ReMeet.app */;
@@ -94,6 +119,10 @@
 			);
 			mainGroup = A34D75022F1892C800F3FF29;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A34D758A2F18944A00F3FF29 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				A34D758F2F1894BC00F3FF29 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A34D750C2F1892C800F3FF29 /* Products */;
 			projectDirPath = "";
@@ -127,6 +156,8 @@
 /* Begin XCBuildConfiguration section */
 		A34D75142F1892C900F3FF29 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = A34D750D2F1892C800F3FF29 /* ReMeet */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -191,6 +222,8 @@
 		};
 		A34D75152F1892C900F3FF29 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = A34D750D2F1892C800F3FF29 /* ReMeet */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -248,6 +281,8 @@
 		};
 		A34D75172F1892C900F3FF29 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = A34D750D2F1892C800F3FF29 /* ReMeet */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -255,7 +290,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CK7B2U2UQ;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReMeet/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -266,7 +302,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ReMeet;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lukelu.remeet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -280,6 +316,8 @@
 		};
 		A34D75182F1892C900F3FF29 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = A34D750D2F1892C800F3FF29 /* ReMeet */;
+			baseConfigurationReferenceRelativePath = Config.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -287,7 +325,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4CK7B2U2UQ;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReMeet/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -298,7 +337,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ReMeet;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lukelu.remeet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -332,6 +371,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A34D758A2F18944A00F3FF29 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.8.0;
+			};
+		};
+		A34D758F2F1894BC00F3FF29 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A34D758B2F18944A00F3FF29 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A34D758A2F18944A00F3FF29 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		A34D758D2F18944A00F3FF29 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A34D758A2F18944A00F3FF29 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		A34D75902F1894BC00F3FF29 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A34D758F2F1894BC00F3FF29 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A34D75032F1892C800F3FF29 /* Project object */;
 }

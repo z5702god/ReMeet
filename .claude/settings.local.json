@@ -1,6 +1,8 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
+      "Bash",
       "Bash(nul)",
       "Bash(xcopy:*)",
       "Bash(test:*)",
@@ -34,9 +36,34 @@
       "Bash(fi)",
       "Bash(done)",
       "Bash(open:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd security improvements, privacy policy, and UI enhancements\n\n- Remove hardcoded API keys, use Config.xcconfig\n- Add privacy policy page \\(in-app + GitHub Pages\\)\n- Add delete account functionality\n- Improve email validation \\(RFC 5322\\)\n- Add password complexity requirements\n- Add Dark Mode support for auth views\n- Add custom ReMeetLogo component\n- Add DesignSystem with adaptive colors\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd security improvements, privacy policy, and UI enhancements\n\n- Remove hardcoded API keys, use Config.xcconfig\n- Add privacy policy page \\(in-app + GitHub Pages\\)\n- Add delete account functionality\n- Improve email validation \\(RFC 5322\\)\n- Add password complexity requirements\n- Add Dark Mode support for auth views\n- Add custom ReMeetLogo component\n- Add DesignSystem with adaptive colors\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(brew install:*)",
+      "Bash(/opt/homebrew/bin/npm install -g n8n-mcp)",
+      "Bash(n8n-mcp:*)",
+      "Bash(/opt/homebrew/bin/npx n8n-mcp --version)",
+      "Bash(API_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMmM1ZGM4MC1kNmQ0LTRjNzItOGZiZC03ZDU5MWE0YjY3N2YiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY4NDU3MTMzfQ.oArUg7a_wxUNnVILrwEI2XrafW48ha_mLiopPj4G924' curl -s -X GET \"https://lukelu.zeabur.app/api/v1/workflows/sUS0F6VkdU2CocNC\"  -H \"X-N8N-API-KEY: $API_KEY\"  -H \"Accept: application/json\" 2)",
+      "Bash(1 cat /tmp/remeet-workflow.json)",
+      "Bash(node -e \"\nconst https = require\\(''https''\\);\nconst fs = require\\(''fs''\\);\n\n// Read the updated workflow JSON\nconst workflowData = JSON.parse\\(fs.readFileSync\\(''/Users/luke/Desktop/ReMeet/n8n-workflows/remeet-ai-chat.json'', ''utf8''\\)\\);\n\n// Prepare the update payload \\(only nodes and connections\\)\nconst updatePayload = JSON.stringify\\({\n  nodes: workflowData.nodes,\n  connections: workflowData.connections,\n  settings: workflowData.settings\n}\\);\n\nconst options = {\n  hostname: ''lukelu.zeabur.app'',\n  path: ''/api/v1/workflows/sUS0F6VkdU2CocNC'',\n  method: ''PUT'',\n  headers: {\n    ''X-N8N-API-KEY'': ''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjMmM1ZGM4MC1kNmQ0LTRjNzItOGZiZC03ZDU5MWE0YjY3N2YiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY4NDU3MTMzfQ.oArUg7a_wxUNnVILrwEI2XrafW48ha_mLiopPj4G924'',\n    ''Content-Type'': ''application/json'',\n    ''Accept'': ''application/json''\n  }\n};\n\nconst req = https.request\\(options, \\(res\\) => {\n  let data = '''';\n  res.on\\(''data'', chunk => data += chunk\\);\n  res.on\\(''end'', \\(\\) => {\n    console.log\\(''Status:'', res.statusCode\\);\n    try {\n      const json = JSON.parse\\(data\\);\n      if \\(res.statusCode === 200\\) {\n        console.log\\(''SUCCESS! Workflow updated.''\\);\n        console.log\\(''Workflow ID:'', json.id\\);\n        console.log\\(''Workflow Name:'', json.name\\);\n        console.log\\(''Active:'', json.active\\);\n      } else {\n        console.log\\(''Error:'', JSON.stringify\\(json, null, 2\\)\\);\n      }\n    } catch \\(e\\) {\n      console.log\\(''Response:'', data\\);\n    }\n  }\\);\n}\\);\n\nreq.on\\(''error'', e => console.error\\(''Request error:'', e.message\\)\\);\nreq.write\\(updatePayload\\);\nreq.end\\(\\);\n\")",
+      "Bash(npx --version:*)",
+      "mcp__n8n-mcp__n8n_list_workflows",
+      "mcp__n8n-mcp__n8n_health_check",
+      "Bash(N8N_API_KEY=\"n8n_api_22ae2c84f72be5a60caff98ca8cff1e46c7b52c71ff4c47fea1de16ee5ae9e07db6f92dbbcb7813f\")",
+      "mcp__n8n-mcp__search_templates",
+      "mcp__n8n-mcp__validate_workflow",
+      "mcp__n8n-mcp__get_node",
+      "mcp__n8n-mcp__n8n_get_workflow",
+      "mcp__n8n-mcp__n8n_update_full_workflow",
+      "Bash(swift scripts/generate_app_icon.swift:*)",
+      "Bash(sips:*)",
+      "Bash(swift:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "n8n-mcp"
+  ]
 }

@@ -287,8 +287,10 @@ A: 可以！在開發初期可以只用 Email 認證，之後再補上 Apple Sig
 ### Q: Service Role Key 和 Anon Key 有什麼區別？
 
 A:
-- **Anon Key**: 繞過 RLS 的所有限制，可以存取所有資料，只能在後端使用
-- **Service Role Key**: 受 RLS 保護，只能存取該用戶有權限的資料，可以放在前端
+- **Anon Key**: 受 RLS 保護，只能存取該用戶有權限的資料，可以安全地放在前端（iOS App）
+- **Service Role Key**: 繞過 RLS 的所有限制，可以存取所有資料，**只能在後端使用，絕對不能放在前端**
+
+> ⚠️ **安全警告**: 如果將 Service Role Key 放入 iOS App，攻擊者可透過反編譯取得金鑰，進而存取所有用戶資料！
 
 ### Q: 為什麼我的測試用戶無法登入？
 

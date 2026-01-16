@@ -1,17 +1,17 @@
-//
-//  ReMeetApp.swift
-//  ReMeet
-//
-//  Created by Luke on 2026/1/15.
-//
-
 import SwiftUI
+import Firebase
 
 @main
 struct ReMeetApp: App {
+
+    init() {
+        FirebaseApp.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(SupabaseClient.shared)
         }
     }
 }
