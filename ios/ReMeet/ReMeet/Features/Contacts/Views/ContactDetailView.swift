@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContactDetailView: View {
 
-    let contact: Contact
+    @State private var contact: Contact
     var onDelete: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
@@ -10,10 +10,16 @@ struct ContactDetailView: View {
     @State private var meetingContexts: [MeetingContext] = []
     @State private var isLoading = true
     @State private var showAddMeetingContext = false
+    @State private var showEditContact = false
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var headerOpacity: Double = 0
     @State private var contentOpacity: Double = 0
+
+    init(contact: Contact, onDelete: (() -> Void)? = nil) {
+        self._contact = State(initialValue: contact)
+        self.onDelete = onDelete
+    }
 
     private let supabase = SupabaseManager.shared
 
@@ -240,6 +246,12 @@ struct ContactDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
+                    Button {
+                        showEditContact = true
+                    } label: {
+                        Label("Edit Contact", systemImage: "pencil")
+                    }
+
                     Button(role: .destructive) {
                         HapticManager.shared.warning()
                         showDeleteConfirmation = true
@@ -261,6 +273,11 @@ struct ContactDetailView: View {
                 Task {
                     await loadMeetingContexts()
                 }
+            }
+        }
+        .sheet(isPresented: $showEditContact) {
+            EditContactView(contact: contact) { updatedContact in
+                contact = updatedContact
             }
         }
         .alert("Delete Contact", isPresented: $showDeleteConfirmation) {

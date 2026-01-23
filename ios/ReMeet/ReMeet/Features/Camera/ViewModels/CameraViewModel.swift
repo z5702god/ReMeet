@@ -83,33 +83,44 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
     // MARK: - Camera Setup
 
     private func setupCamera() {
+        print("📷 Setting up camera...")
         session.beginConfiguration()
         session.sessionPreset = .photo
 
         // Get back camera
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            print("📷 ERROR: Camera not available")
             state.errorMessage = "Camera not available"
             session.commitConfiguration()
             return
         }
 
         currentDevice = device
+        print("📷 Found camera device: \(device.localizedName)")
 
         do {
             let input = try AVCaptureDeviceInput(device: device)
 
             if session.canAddInput(input) {
                 session.addInput(input)
+                print("📷 Added camera input")
+            } else {
+                print("📷 ERROR: Cannot add camera input")
             }
 
             if session.canAddOutput(photoOutput) {
                 session.addOutput(photoOutput)
                 photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.first ?? CMVideoDimensions(width: 4032, height: 3024)
+                print("📷 Added photo output")
+            } else {
+                print("📷 ERROR: Cannot add photo output")
             }
 
             session.commitConfiguration()
+            print("📷 Camera setup complete")
 
         } catch {
+            print("📷 ERROR: Failed to setup camera: \(error.localizedDescription)")
             state.errorMessage = "Failed to setup camera: \(error.localizedDescription)"
             session.commitConfiguration()
         }
@@ -118,12 +129,26 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
     // MARK: - Session Control
 
     func startSession() {
-        guard state.permissionStatus == .authorized else { return }
+        guard state.permissionStatus == .authorized else {
+            print("📷 Cannot start session - permission status: \(state.permissionStatus.rawValue)")
+            return
+        }
+
+        // Ensure camera is set up before starting
+        if session.inputs.isEmpty {
+            print("📷 Session has no inputs, setting up camera first")
+            setupCamera()
+        }
 
         let captureSession = session
         Task.detached {
-            guard !captureSession.isRunning else { return }
+            guard !captureSession.isRunning else {
+                print("📷 Session already running")
+                return
+            }
+            print("📷 Starting camera session...")
             captureSession.startRunning()
+            print("📷 Camera session started: \(captureSession.isRunning)")
         }
     }
 
@@ -324,14 +349,17 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
         // Fix orientation
         let fixedImage = Self.fixImageOrientation(image)
 
+        // Crop to card frame area (center 85% width, business card aspect ratio 1.75:1)
+        let croppedImage = Self.cropToCardFrame(fixedImage)
+
         Task { @MainActor [weak self] in
             guard let self = self else { return }
             if self.state.isBatchMode {
                 // Batch mode: add directly to list
-                self.addImageToBatch(fixedImage)
+                self.addImageToBatch(croppedImage)
             } else {
                 // Single mode: show preview
-                self.state.capturedImage = fixedImage
+                self.state.capturedImage = croppedImage
                 self.state.isShowingPreview = true
                 self.stopSession()
             }
@@ -347,5 +375,36 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
         UIGraphicsEndImageContext()
 
         return normalizedImage ?? image
+    }
+
+    /// Crop image to the card frame area (center portion matching the UI guide)
+    private static nonisolated func cropToCardFrame(_ image: UIImage) -> UIImage {
+        let imageWidth = image.size.width
+        let imageHeight = image.size.height
+
+        // The frame in UI is 85% of screen width, centered
+        // Card aspect ratio is approximately 1.75:1 (width:height) for business cards
+        let cropWidthRatio: CGFloat = 0.85
+        let cardAspectRatio: CGFloat = 1.75
+
+        // Calculate crop dimensions
+        let cropWidth = imageWidth * cropWidthRatio
+        let cropHeight = cropWidth / cardAspectRatio
+
+        // Center the crop area (slightly above center to match UI frame position)
+        let cropX = (imageWidth - cropWidth) / 2
+        let cropY = (imageHeight - cropHeight) / 2 - (imageHeight * 0.05) // Slightly above center
+
+        // Ensure crop rect is within bounds
+        let safeY = max(0, min(cropY, imageHeight - cropHeight))
+        let cropRect = CGRect(x: cropX, y: safeY, width: cropWidth, height: cropHeight)
+
+        // Perform the crop
+        guard let cgImage = image.cgImage,
+              let croppedCGImage = cgImage.cropping(to: cropRect) else {
+            return image
+        }
+
+        return UIImage(cgImage: croppedCGImage, scale: image.scale, orientation: image.imageOrientation)
     }
 }

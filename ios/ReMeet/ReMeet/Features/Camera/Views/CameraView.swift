@@ -157,14 +157,14 @@ struct CameraView: View {
     private var batchCameraView: some View {
         GeometryReader { geometry in
             ZStack {
-                // Camera preview
+                // Camera preview - full screen
                 CameraPreviewView(session: viewModel.session)
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     Spacer()
 
-                    // Card frame guide
+                    // Card frame guide (visual only - camera captures full frame)
                     RoundedRectangle(cornerRadius: AppCornerRadius.medium)
                         .stroke(Color.white, lineWidth: 2)
                         .frame(
@@ -183,15 +183,18 @@ struct CameraView: View {
 
                     Spacer()
 
-                    // Thumbnail strip
-                    if !viewModel.state.capturedCards.isEmpty {
-                        thumbnailStrip
-                            .background(Color.black.opacity(0.7))
-                    }
+                    // Bottom controls area with consistent background
+                    VStack(spacing: 0) {
+                        // Thumbnail strip
+                        if !viewModel.state.capturedCards.isEmpty {
+                            thumbnailStrip
+                        }
 
-                    // Controls
-                    controlsBar
-                        .background(Color.black.opacity(0.7))
+                        // Controls
+                        controlsBar
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.7).ignoresSafeArea(edges: .bottom))
                 }
             }
         }
@@ -374,7 +377,16 @@ struct CardThumbnail: View {
                     RoundedRectangle(cornerRadius: AppCornerRadius.small)
                         .stroke(Color.white.opacity(0.5), lineWidth: 1)
                 )
+                .overlay(alignment: .topTrailing) {
+                    // Delete badge
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, .red)
+                        .offset(x: 4, y: -4)
+                }
         }
+        .padding(.top, 4)
     }
 }
 
@@ -436,28 +448,26 @@ struct CardPreviewSheet: View {
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(previewLayer)
-
-        context.coordinator.previewLayer = previewLayer
-
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = .resizeAspectFill
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.previewLayer?.frame = uiView.bounds
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        // PreviewView handles layout automatically via layoutSubviews
+    }
+}
+
+/// Custom UIView that properly handles AVCaptureVideoPreviewLayer layout
+class PreviewView: UIView {
+    override class var layerClass: AnyClass {
+        AVCaptureVideoPreviewLayer.self
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    class Coordinator {
-        var previewLayer: AVCaptureVideoPreviewLayer?
+    var previewLayer: AVCaptureVideoPreviewLayer {
+        layer as! AVCaptureVideoPreviewLayer
     }
 }
 

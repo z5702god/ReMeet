@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import Functions
 
 // MARK: - RPC Parameters
 
@@ -12,6 +13,40 @@ nonisolated struct MeetingTimelineParams: Encodable, Sendable {
         case userUuid = "user_uuid"
         case startDate = "start_date"
         case endDate = "end_date"
+    }
+}
+
+// MARK: - Contact Update (excludes joined fields)
+
+private struct ContactUpdate: Encodable {
+    let fullName: String
+    let title: String?
+    let department: String?
+    let companyId: UUID?
+    let phone: String?
+    let email: String?
+    let website: String?
+    let address: String?
+    let linkedinUrl: String?
+    let twitterUrl: String?
+    let isFavorite: Bool
+    let notes: String?
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+        case title
+        case department
+        case companyId = "company_id"
+        case phone
+        case email
+        case website
+        case address
+        case linkedinUrl = "linkedin_url"
+        case twitterUrl = "twitter_url"
+        case isFavorite = "is_favorite"
+        case notes
+        case updatedAt = "updated_at"
     }
 }
 
@@ -36,6 +71,9 @@ final class SupabaseManager {
     /// Authentication state
     var isAuthenticated = false
 
+    /// Whether we're still checking for an existing session
+    var isCheckingSession = true
+
     // MARK: - Initialization
 
     private init() {
@@ -45,10 +83,27 @@ final class SupabaseManager {
             supabaseKey: SupabaseConfig.supabaseAnonKey
         )
 
-        // Setup auth state listener
+        // Check existing session and setup listener
         Task {
+            await checkExistingSession()
             await setupAuthStateListener()
         }
+    }
+
+    /// Check for existing session on app launch
+    private func checkExistingSession() async {
+        do {
+            let session = try await client.auth.session
+            self.isAuthenticated = true
+            await loadCurrentUser(session.user.id)
+            print("Restored existing session for user: \(session.user.id)")
+        } catch {
+            // No existing session or session expired
+            self.isAuthenticated = false
+            self.currentUser = nil
+            print("No existing session: \(error.localizedDescription)")
+        }
+        self.isCheckingSession = false
     }
 
     // MARK: - Authentication State
@@ -137,55 +192,50 @@ final class SupabaseManager {
     /// Delete user account and all associated data
     /// Uses Edge Function to ensure complete deletion including auth.users
     func deleteUserAccount() async throws {
-        // Get current session for authentication
-        guard let session = try? await client.auth.session else {
+        // Get current user ID
+        guard let userId = currentUser?.id else {
+            print("🗑️ Delete account: No current user")
             throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
                 NSLocalizedDescriptionKey: "User not authenticated"
             ])
         }
 
-        // Call Edge Function to delete account
-        let functionURL = SupabaseConfig.supabaseURL
-            .appendingPathComponent("functions")
-            .appendingPathComponent("v1")
-            .appendingPathComponent("delete-user")
+        print("🗑️ Delete account: Starting deletion for user: \(userId)")
 
-        var request = URLRequest(url: functionURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 30
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "SupabaseClient", code: 500, userInfo: [
-                NSLocalizedDescriptionKey: "Invalid server response"
-            ])
-        }
-
-        if httpResponse.statusCode == 401 {
+        // Get current session to ensure we have a valid token
+        do {
+            let session = try await client.auth.session
+            print("🗑️ Delete account: Session valid, access token length: \(session.accessToken.count)")
+        } catch {
+            print("🗑️ Delete account: No valid session - \(error)")
             throw NSError(domain: "SupabaseClient", code: 401, userInfo: [
-                NSLocalizedDescriptionKey: "Authentication required"
+                NSLocalizedDescriptionKey: "Session expired. Please sign in again."
             ])
         }
 
-        guard httpResponse.statusCode == 200 else {
-            // Try to parse error message from response
-            if let errorResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errorMessage = errorResponse["error"] as? String {
-                throw NSError(domain: "SupabaseClient", code: httpResponse.statusCode, userInfo: [
-                    NSLocalizedDescriptionKey: errorMessage
-                ])
-            }
-            throw NSError(domain: "SupabaseClient", code: httpResponse.statusCode, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to delete account"
+        // Use Supabase SDK to invoke the edge function
+        do {
+            let response = try await client.functions.invoke(
+                "delete-user",
+                options: FunctionInvokeOptions(
+                    body: ["confirm": true]
+                )
+            )
+
+            print("🗑️ Delete account: Response received")
+
+            // Clear local state and sign out
+            try? await client.auth.signOut()
+            self.currentUser = nil
+            self.isAuthenticated = false
+            print("🗑️ Delete account: Success!")
+
+        } catch {
+            print("🗑️ Delete account: Error - \(error)")
+            throw NSError(domain: "SupabaseClient", code: 500, userInfo: [
+                NSLocalizedDescriptionKey: "Failed to delete account: \(error.localizedDescription)"
             ])
         }
-
-        // Clear local state
-        self.currentUser = nil
-        self.isAuthenticated = false
     }
 
     // MARK: - Storage Methods
@@ -331,9 +381,26 @@ final class SupabaseManager {
 
     /// Update existing contact
     func updateContact(_ contact: Contact) async throws {
+        // Only send updateable fields (exclude joined 'company' object)
+        let updateData = ContactUpdate(
+            fullName: contact.fullName,
+            title: contact.title,
+            department: contact.department,
+            companyId: contact.companyId,
+            phone: contact.phone,
+            email: contact.email,
+            website: contact.website,
+            address: contact.address,
+            linkedinUrl: contact.linkedinUrl,
+            twitterUrl: contact.twitterUrl,
+            isFavorite: contact.isFavorite,
+            notes: contact.notes,
+            updatedAt: Date()
+        )
+
         try await client
             .from("contacts")
-            .update(contact)
+            .update(updateData)
             .eq("id", value: contact.id.uuidString)
             .execute()
     }
@@ -371,6 +438,12 @@ final class SupabaseManager {
             .limit(1)
             .execute()
             .value
+
+        if let card = cards.first {
+            print("🖼️ Business card found, imageUrl: \(card.imageUrl)")
+        } else {
+            print("🖼️ No business card found for id: \(contactId)")
+        }
 
         return cards.first
     }
@@ -449,6 +522,15 @@ final class SupabaseManager {
             .value
 
         return created
+    }
+
+    /// Update company
+    func updateCompany(_ company: Company) async throws {
+        try await client
+            .from("companies")
+            .update(company)
+            .eq("id", value: company.id.uuidString)
+            .execute()
     }
 
     /// Search companies by name

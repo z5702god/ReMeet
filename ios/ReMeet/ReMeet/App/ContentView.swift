@@ -6,7 +6,20 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if supabase.isAuthenticated {
+            if supabase.isCheckingSession {
+                // Show splash while checking session
+                ZStack {
+                    AppColors.background.ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        Image(systemName: "person.crop.rectangle.stack.fill")
+                            .font(.system(size: 50))
+                            .foregroundStyle(AppColors.primaryGradient)
+                        Text("Re:Meet")
+                            .font(.title.bold())
+                            .foregroundColor(AppColors.textPrimary)
+                    }
+                }
+            } else if supabase.isAuthenticated {
                 // User is logged in - show main app
                 MainTabView()
             } else {
