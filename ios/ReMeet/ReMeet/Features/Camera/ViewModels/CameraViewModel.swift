@@ -45,6 +45,12 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
 
     private let supabase = SupabaseManager.shared
 
+    // MARK: - Background OCR
+
+    /// Pre-fetched OCR results keyed by card ID
+    var ocrResults: [UUID: BusinessCardScanner.ScanResult] = [:]
+    private var ocrTasks: [UUID: Task<Void, Never>] = [:]
+
     // MARK: - Initialization
 
     override init() {
@@ -265,6 +271,9 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
         let card = CapturedCard(image: image, imageData: imageData, imageUrl: nil)
         state.capturedCards.append(card)
 
+        // Start OCR immediately in background
+        startBackgroundOCR(for: card)
+
         // Reset for next capture
         state.capturedImage = nil
         state.isShowingPreview = false
@@ -277,6 +286,24 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
         let imageData = compressImage(fixedImage)
         let card = CapturedCard(image: fixedImage, imageData: imageData, imageUrl: nil)
         state.capturedCards.append(card)
+
+        // Start OCR immediately in background
+        startBackgroundOCR(for: card)
+    }
+
+    /// Start OCR processing in background for a captured card
+    private func startBackgroundOCR(for card: CapturedCard) {
+        let cardId = card.id
+        let image = card.image
+        ocrTasks[cardId] = Task {
+            do {
+                let result = try await BusinessCardScanner.shared.scanBusinessCard(image: image)
+                ocrResults[cardId] = result
+                print("📷 Background OCR completed for card \(cardId.uuidString.prefix(8))")
+            } catch {
+                print("📷 Background OCR failed for card \(cardId.uuidString.prefix(8)): \(error.localizedDescription)")
+            }
+        }
     }
 
     /// Remove card from batch
@@ -287,6 +314,10 @@ final class CameraViewModel: NSObject, AVCapturePhotoCaptureDelegate {
 
     /// Clear all captured cards
     func clearBatch() {
+        // Cancel any pending OCR tasks
+        ocrTasks.values.forEach { $0.cancel() }
+        ocrTasks.removeAll()
+        ocrResults.removeAll()
         state.capturedCards.removeAll()
         state.selectedCardForPreview = nil
     }

@@ -41,8 +41,8 @@ struct ContactDetailView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .frame(maxHeight: 200)
-                                    .cornerRadius(AppCornerRadius.medium)
-                                    .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+                                    .cornerRadius(AppCornerRadius.large)
+                                    .shadow(color: Color.black.opacity(0.2), radius: 12, x: 0, y: 4)
                             case .failure:
                                 Image(systemName: "photo")
                                     .font(.largeTitle)
@@ -181,7 +181,7 @@ struct ContactDetailView: View {
                                 .padding(AppSpacing.md)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(AppColors.cardBackground)
-                                .cornerRadius(AppCornerRadius.medium)
+                                .cornerRadius(AppCornerRadius.large)
                         }
                         .padding(.horizontal, AppSpacing.md)
                         .opacity(contentOpacity)
@@ -201,9 +201,13 @@ struct ContactDetailView: View {
                                             .font(AppTypography.caption)
                                             .padding(.horizontal, AppSpacing.md)
                                             .padding(.vertical, AppSpacing.sm)
-                                            .background(AppColors.accentBlue.opacity(0.15))
+                                            .background(AppColors.glassGradient)
                                             .foregroundColor(AppColors.accentBlue)
                                             .cornerRadius(AppCornerRadius.large)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                                                    .stroke(AppColors.divider, lineWidth: 1)
+                                            )
                                     }
                                 }
                             }
@@ -228,7 +232,7 @@ struct ContactDetailView: View {
                         .padding(AppSpacing.md)
                         .frame(maxWidth: .infinity)
                         .background(AppColors.cardBackground)
-                        .cornerRadius(AppCornerRadius.medium)
+                        .cornerRadius(AppCornerRadius.large)
                         .padding(.horizontal, AppSpacing.md)
                         .opacity(contentOpacity)
                     }
@@ -260,7 +264,7 @@ struct ContactDetailView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .foregroundColor(AppColors.accentPurple)
+                        .foregroundColor(AppColors.accentBlue)
                 }
                 .accessibleButton(label: "More options")
             }
@@ -297,8 +301,8 @@ struct ContactDetailView: View {
                     .overlay {
                         ProgressView("Deleting...")
                             .padding(AppSpacing.lg)
-                            .background(AppColors.cardBackground)
-                            .cornerRadius(AppCornerRadius.medium)
+                            .background(AppColors.overlayBackground)
+                            .cornerRadius(AppCornerRadius.large)
                     }
             }
         }
@@ -363,17 +367,21 @@ struct QuickActionButton: View {
         } label: {
             VStack(spacing: AppSpacing.sm) {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.system(size: 20))
                     .foregroundColor(color)
 
                 Text(label)
                     .font(AppTypography.caption)
                     .foregroundColor(AppColors.textSecondary)
             }
-            .frame(width: 70, height: 70)
+            .frame(maxWidth: .infinity)
+            .frame(height: 60)
             .background(AppColors.cardBackground)
             .cornerRadius(AppCornerRadius.medium)
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                    .stroke(AppColors.divider, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .accessibleButton(label: label)
@@ -386,88 +394,100 @@ struct MeetingContextCard: View {
     let context: MeetingContext
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.md) {
-            // Header
-            HStack {
-                if let occasionType = context.occasionType {
-                    let type = OccasionType(rawValue: occasionType) ?? .other
-                    Image(systemName: type.icon)
-                        .foregroundColor(AppColors.accentBlue)
-                }
+        HStack(spacing: 0) {
+            // Accent bar
+            RoundedRectangle(cornerRadius: 2)
+                .fill(AppColors.accentBlue)
+                .frame(width: 4)
+                .padding(.vertical, AppSpacing.sm)
 
-                if let eventName = context.eventName {
-                    Text(eventName)
-                        .font(AppTypography.headline)
-                        .foregroundColor(AppColors.textPrimary)
-                } else if let occasionType = context.occasionType {
-                    let type = OccasionType(rawValue: occasionType) ?? .other
-                    Text(type.displayName)
-                        .font(AppTypography.headline)
-                        .foregroundColor(AppColors.textPrimary)
-                }
+            // Content
+            VStack(alignment: .leading, spacing: AppSpacing.md) {
+                // Header
+                HStack {
+                    if let occasionType = context.occasionType {
+                        let type = OccasionType(rawValue: occasionType) ?? .other
+                        Image(systemName: type.icon)
+                            .foregroundColor(AppColors.accentBlue)
+                    }
 
-                Spacer()
+                    if let eventName = context.eventName {
+                        Text(eventName)
+                            .font(AppTypography.headline)
+                            .foregroundColor(AppColors.textPrimary)
+                    } else if let occasionType = context.occasionType {
+                        let type = OccasionType(rawValue: occasionType) ?? .other
+                        Text(type.displayName)
+                            .font(AppTypography.headline)
+                            .foregroundColor(AppColors.textPrimary)
+                    }
 
-                if let date = context.meetingDate {
-                    Text(date, style: .date)
-                        .font(AppTypography.caption)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-            }
+                    Spacer()
 
-            // Location
-            if let location = context.locationName {
-                HStack(spacing: AppSpacing.xs) {
-                    Image(systemName: "mappin")
-                        .foregroundColor(AppColors.textSecondary)
-                        .font(.caption)
-                    Text(location)
-                        .font(AppTypography.subheadline)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-            }
-
-            // Relationship
-            if let relationshipType = context.relationshipType {
-                let type = RelationshipType(rawValue: relationshipType) ?? .contact
-                Text(type.displayName)
-                    .font(AppTypography.caption)
-                    .padding(.horizontal, AppSpacing.sm)
-                    .padding(.vertical, AppSpacing.xs)
-                    .background(type.color.opacity(0.2))
-                    .foregroundColor(type.color)
-                    .cornerRadius(AppCornerRadius.small)
-            }
-
-            // Notes
-            if let notes = context.notes {
-                Text(notes)
-                    .font(AppTypography.subheadline)
-                    .foregroundColor(AppColors.textSecondary)
-                    .lineLimit(2)
-            }
-
-            // Follow-up indicator
-            if context.followUpRequired {
-                HStack(spacing: AppSpacing.xs) {
-                    Image(systemName: "bell.fill")
-                        .foregroundColor(AppColors.accentOrange)
-                        .font(.caption)
-                    Text("Follow-up needed")
-                        .font(AppTypography.caption)
-                        .foregroundColor(AppColors.accentOrange)
-                    if let followUpDate = context.followUpDate {
-                        Text("by \(followUpDate, style: .date)")
+                    if let date = context.meetingDate {
+                        Text(date, style: .date)
                             .font(AppTypography.caption)
                             .foregroundColor(AppColors.textSecondary)
                     }
                 }
+
+                // Location
+                if let location = context.locationName {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "mappin")
+                            .foregroundColor(AppColors.textSecondary)
+                            .font(.caption)
+                        Text(location)
+                            .font(AppTypography.subheadline)
+                            .foregroundColor(AppColors.textSecondary)
+                    }
+                }
+
+                // Relationship
+                if let relationshipType = context.relationshipType {
+                    let type = RelationshipType(rawValue: relationshipType) ?? .contact
+                    Text(type.displayName)
+                        .font(AppTypography.caption)
+                        .padding(.horizontal, AppSpacing.sm)
+                        .padding(.vertical, AppSpacing.xs)
+                        .background(type.color.opacity(0.2))
+                        .foregroundColor(type.color)
+                        .cornerRadius(AppCornerRadius.small)
+                }
+
+                // Notes
+                if let notes = context.notes {
+                    Text(notes)
+                        .font(AppTypography.subheadline)
+                        .foregroundColor(AppColors.textSecondary)
+                        .lineLimit(2)
+                }
+
+                // Follow-up indicator
+                if context.followUpRequired {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(AppColors.accentOrange)
+                            .font(.caption)
+                        Text("Follow-up needed")
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.accentOrange)
+                        if let followUpDate = context.followUpDate {
+                            Text("by \(followUpDate, style: .date)")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.textSecondary)
+                        }
+                    }
+                }
             }
+            .padding(AppSpacing.md)
         }
-        .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+        .cornerRadius(AppCornerRadius.large)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                .stroke(AppColors.divider, lineWidth: 1)
+        )
         .padding(.horizontal, AppSpacing.md)
     }
 }
@@ -495,7 +515,7 @@ struct ContactInfoRow: View {
                 if isLink {
                     Link(value, destination: linkURL)
                         .font(AppTypography.body)
-                        .foregroundColor(AppColors.textPrimary)
+                        .foregroundColor(AppColors.accentBlue)
                 } else {
                     Text(value)
                         .font(AppTypography.body)
@@ -504,11 +524,20 @@ struct ContactInfoRow: View {
             }
 
             Spacer()
+
+            Button {
+                UIPasteboard.general.string = value
+                HapticManager.shared.lightImpact()
+                ToastManager.shared.show("Copied to clipboard", style: .success, duration: 1.5)
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.subheadline)
+                    .foregroundColor(AppColors.textTertiary)
+            }
         }
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+        .cornerRadius(AppCornerRadius.large)
     }
 
     private var linkURL: URL {

@@ -7,6 +7,8 @@ struct HomeView: View {
     @State private var showProfile = false
     @State private var showAddContact = false
     @State private var contentOpacity: Double = 0
+    @State private var contactToDelete: Contact?
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         NavigationView {
@@ -56,9 +58,6 @@ struct HomeView: View {
 
                             // All Contacts Section
                             allContactsSection
-
-                            // Bottom spacing for FAB
-                            Spacer(minLength: 100)
                         }
                         .opacity(contentOpacity)
                         .onAppear {
@@ -72,20 +71,6 @@ struct HomeView: View {
                     }
                 }
 
-                // Floating Action Button
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        FloatingActionButton(icon: "plus") {
-                            HapticManager.shared.mediumImpact()
-                            showAddContact = true
-                        }
-                        .accessibleButton(label: "Add new contact", hint: "Opens form to add a new contact")
-                        .padding(.trailing, AppSpacing.lg)
-                        .padding(.bottom, AppSpacing.lg)
-                    }
-                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -98,6 +83,19 @@ struct HomeView: View {
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(AppColors.primaryGradient)
                     }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        HapticManager.shared.mediumImpact()
+                        showAddContact = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(AppColors.primaryGradient)
+                    }
+                    .accessibleButton(label: "Add new contact")
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -122,6 +120,23 @@ struct HomeView: View {
                     }
                 }
             }
+            .alert("Delete Contact", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    contactToDelete = nil
+                }
+                Button("Delete", role: .destructive) {
+                    if let contact = contactToDelete {
+                        Task {
+                            await viewModel.deleteContact(contact)
+                        }
+                    }
+                    contactToDelete = nil
+                }
+            } message: {
+                if let contact = contactToDelete {
+                    Text("Are you sure you want to delete \(contact.fullName)? This action cannot be undone.")
+                }
+            }
             .task(id: supabase.currentUser?.id) {
                 // Load contacts when user is loaded (not just authenticated)
                 // currentUser is loaded after isAuthenticated is set, so we need to wait for it
@@ -137,12 +152,18 @@ struct HomeView: View {
     @ViewBuilder
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: AppSpacing.sm) {
-            Text("Welcome back!")
-                .font(AppTypography.subheadline)
-                .foregroundColor(AppColors.textSecondary)
+            if let firstName = supabase.currentUser?.displayName.components(separatedBy: " ").first, !firstName.isEmpty {
+                Text("Welcome back, \(firstName)!")
+                    .font(AppTypography.subheadline)
+                    .foregroundColor(AppColors.textSecondary)
+            } else {
+                Text("Welcome back!")
+                    .font(AppTypography.subheadline)
+                    .foregroundColor(AppColors.textSecondary)
+            }
 
             Text("\(viewModel.contacts.count) contacts")
-                .font(AppTypography.title3)
+                .font(AppTypography.title2)
                 .foregroundColor(AppColors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,6 +223,45 @@ struct HomeView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            Task { await viewModel.toggleFavorite(contact) }
+                        } label: {
+                            Label(
+                                contact.isFavorite ? "Remove Favorite" : "Add to Favorites",
+                                systemImage: contact.isFavorite ? "star.slash" : "star.fill"
+                            )
+                        }
+
+                        if let phone = contact.phone, !phone.isEmpty {
+                            Button {
+                                if let url = URL(string: "tel:\(phone.replacingOccurrences(of: " ", with: ""))") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Label("Call", systemImage: "phone")
+                            }
+                        }
+
+                        if let email = contact.email, !email.isEmpty {
+                            Button {
+                                if let url = URL(string: "mailto:\(email)") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Label("Email", systemImage: "envelope")
+                            }
+                        }
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            contactToDelete = contact
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .padding(.horizontal, AppSpacing.md)
@@ -235,6 +295,45 @@ struct HomeView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            Task { await viewModel.toggleFavorite(contact) }
+                        } label: {
+                            Label(
+                                contact.isFavorite ? "Remove Favorite" : "Add to Favorites",
+                                systemImage: contact.isFavorite ? "star.slash" : "star.fill"
+                            )
+                        }
+
+                        if let phone = contact.phone, !phone.isEmpty {
+                            Button {
+                                if let url = URL(string: "tel:\(phone.replacingOccurrences(of: " ", with: ""))") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Label("Call", systemImage: "phone")
+                            }
+                        }
+
+                        if let email = contact.email, !email.isEmpty {
+                            Button {
+                                if let url = URL(string: "mailto:\(email)") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Label("Email", systemImage: "envelope")
+                            }
+                        }
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            contactToDelete = contact
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .opacity
@@ -275,8 +374,11 @@ struct FavoriteContactCard: View {
         .padding(.vertical, AppSpacing.md)
         .padding(.horizontal, AppSpacing.sm)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .cornerRadius(AppCornerRadius.large)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                .stroke(AppColors.divider, lineWidth: 1)
+        )
     }
 }
 
@@ -322,8 +424,7 @@ struct ContactRowCard: View {
         }
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+        .cornerRadius(AppCornerRadius.large)
     }
 }
 
@@ -368,6 +469,7 @@ struct ProfileView: View {
     @Environment(SupabaseManager.self) var supabase
     @State private var showPrivacyPolicy = false
     @State private var showDeleteAccount = false
+    @State private var showSignOutConfirmation = false
 
     var body: some View {
         NavigationView {
@@ -443,10 +545,7 @@ struct ProfileView: View {
 
                         // Sign Out
                         Button {
-                            Task {
-                                try? await supabase.signOut()
-                                dismiss()
-                            }
+                            showSignOutConfirmation = true
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.right.square.fill")
@@ -461,7 +560,7 @@ struct ProfileView: View {
                         .padding(.horizontal, AppSpacing.md)
 
                         // Version
-                        Text("Version 1.0.0")
+                        Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                             .font(AppTypography.caption)
                             .foregroundColor(AppColors.textSecondary)
                             .padding(.top, AppSpacing.lg)
@@ -484,6 +583,17 @@ struct ProfileView: View {
             .sheet(isPresented: $showDeleteAccount) {
                 DeleteAccountView()
                     .environment(supabase)
+            }
+            .alert("Sign Out", isPresented: $showSignOutConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Sign Out", role: .destructive) {
+                    Task {
+                        try? await supabase.signOut()
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to sign out?")
             }
         }
     }

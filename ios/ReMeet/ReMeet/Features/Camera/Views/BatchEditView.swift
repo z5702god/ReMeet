@@ -4,6 +4,7 @@ import SwiftUI
 struct BatchEditView: View {
 
     let cards: [CapturedCard]
+    var preloadedOCRResults: [UUID: BusinessCardScanner.ScanResult] = [:]
     let onComplete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -29,6 +30,7 @@ struct BatchEditView: View {
                             card: cards[currentIndex],
                             cardNumber: currentIndex + 1,
                             totalCards: cards.count,
+                            preloadedOCRResult: preloadedOCRResults[cards[currentIndex].id],
                             onSave: {
                                 moveToNext()
                             },
@@ -159,6 +161,7 @@ struct BatchCardEditView: View {
     let card: CapturedCard
     let cardNumber: Int
     let totalCards: Int
+    var preloadedOCRResult: BusinessCardScanner.ScanResult?
     let onSave: () -> Void
     let onSkip: () -> Void
 
@@ -324,8 +327,13 @@ struct BatchCardEditView: View {
             }
         }
 
-        // Then perform OCR
-        await performOCR()
+        // Use preloaded OCR result if available, otherwise scan now
+        if let preloaded = preloadedOCRResult {
+            print("📷 Using preloaded OCR result")
+            applyOCRResult(preloaded)
+        } else {
+            await performOCR()
+        }
     }
 
     private func performOCR() async {
@@ -334,38 +342,39 @@ struct BatchCardEditView: View {
 
         do {
             let result = try await BusinessCardScanner.shared.scanBusinessCard(image: card.image)
-
-            await MainActor.run {
-                if let name = result.fullName, !name.isEmpty {
-                    viewModel.fullName = name
-                }
-                if let title = result.title, !title.isEmpty {
-                    viewModel.title = title
-                }
-                if let company = result.company, !company.isEmpty {
-                    viewModel.companyName = company
-                }
-                if let phone = result.phone, !phone.isEmpty {
-                    viewModel.phone = phone
-                }
-                if let email = result.email, !email.isEmpty {
-                    viewModel.email = email
-                }
-                if let croppedImg = result.croppedImage {
-                    croppedImage = croppedImg
-                }
-
-                isScanning = false
-
-                if result.isEmpty {
-                    scanError = "Could not extract contact info. Please enter manually."
-                }
-            }
+            applyOCRResult(result)
         } catch {
             await MainActor.run {
                 isScanning = false
                 scanError = "OCR failed. Please enter manually."
             }
+        }
+    }
+
+    private func applyOCRResult(_ result: BusinessCardScanner.ScanResult) {
+        if let name = result.fullName, !name.isEmpty {
+            viewModel.fullName = name
+        }
+        if let title = result.title, !title.isEmpty {
+            viewModel.title = title
+        }
+        if let company = result.company, !company.isEmpty {
+            viewModel.companyName = company
+        }
+        if let phone = result.phone, !phone.isEmpty {
+            viewModel.phone = phone
+        }
+        if let email = result.email, !email.isEmpty {
+            viewModel.email = email
+        }
+        if let croppedImg = result.croppedImage {
+            croppedImage = croppedImg
+        }
+
+        isScanning = false
+
+        if result.isEmpty {
+            scanError = "Could not extract contact info. Please enter manually."
         }
     }
 }

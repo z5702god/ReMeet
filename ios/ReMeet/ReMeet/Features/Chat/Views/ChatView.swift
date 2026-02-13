@@ -135,9 +135,13 @@ struct ChatView: View {
                             .font(AppTypography.subheadline)
                             .padding(.horizontal, AppSpacing.md)
                             .padding(.vertical, AppSpacing.sm)
-                            .background(AppColors.accentBlue.opacity(0.1))
+                            .background(AppColors.glassGradient)
                             .foregroundColor(AppColors.accentBlue)
                             .cornerRadius(AppCornerRadius.large)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                                    .stroke(AppColors.divider, lineWidth: 1)
+                            )
                     }
                 }
             }
@@ -149,12 +153,13 @@ struct ChatView: View {
     // MARK: - Input Area
 
     private var inputArea: some View {
-        HStack(spacing: AppSpacing.md) {
+        HStack(spacing: AppSpacing.sm) {
             TextField("Ask me anything...", text: $messageText)
                 .textFieldStyle(.plain)
-                .padding(AppSpacing.md)
-                .background(AppColors.searchBackground)
-                .cornerRadius(AppCornerRadius.large)
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, 12)
+                .background(AppColors.divider)
+                .cornerRadius(AppCornerRadius.full)
                 .focused($isInputFocused)
                 .onSubmit {
                     sendMessage()
@@ -165,12 +170,16 @@ struct ChatView: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(messageText.isEmpty ? AppColors.textSecondary : AppColors.accentBlue)
+                    .foregroundStyle(
+                        messageText.isEmpty
+                            ? AnyShapeStyle(AppColors.textSecondary)
+                            : AnyShapeStyle(AppColors.buttonGradient)
+                    )
             }
             .disabled(messageText.isEmpty || viewModel.isLoading)
         }
         .padding(AppSpacing.md)
-        .background(AppColors.cardBackground)
+        .background(AppColors.background)
     }
 
     private func sendMessage() {
@@ -216,10 +225,10 @@ private struct MessageBubble: View {
                     .font(AppTypography.body)
                     .padding(.horizontal, AppSpacing.md)
                     .padding(.vertical, AppSpacing.sm)
-                    .background(message.isFromUser ? AppColors.accentPurple : AppColors.cardBackground)
+                    .background(message.isFromUser ? AnyShapeStyle(AppColors.buttonGradient) : AnyShapeStyle(AppColors.divider))
                     .foregroundColor(message.isFromUser ? .white : AppColors.textPrimary)
                     .cornerRadius(18)
-                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .shadow(color: message.isFromUser ? Color(hex: "4A9FFF").opacity(0.2) : Color.clear, radius: 8, x: 0, y: 4)
 
                 Text(message.timestamp.formatted(date: .omitted, time: .shortened))
                     .font(AppTypography.caption)
@@ -258,7 +267,10 @@ private struct SearchResultsView: View {
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
         .cornerRadius(AppCornerRadius.large)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                .stroke(AppColors.divider, lineWidth: 1)
+        )
     }
 }
 
@@ -298,8 +310,8 @@ private struct SearchResultCard: View {
                 .font(.caption)
         }
         .padding(AppSpacing.md)
-        .background(AppColors.background)
-        .cornerRadius(AppCornerRadius.medium)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.large)
     }
 }
 

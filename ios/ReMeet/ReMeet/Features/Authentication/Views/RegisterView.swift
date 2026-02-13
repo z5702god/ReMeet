@@ -93,7 +93,7 @@ struct RegisterView: View {
                                 )
 
                                 if !viewModel.password.isEmpty && !viewModel.isPasswordValid {
-                                    InlineErrorView(message: "At least 8 characters required")
+                                    InlineErrorView(message: "8+ characters, uppercase, lowercase, and number required")
                                 }
                             }
                             .animation(.easeInOut(duration: 0.2), value: viewModel.isPasswordValid)

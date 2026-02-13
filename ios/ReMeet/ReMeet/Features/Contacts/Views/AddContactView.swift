@@ -66,6 +66,7 @@ struct AddContactView: View {
 
                                 // Company suggestions with animation
                                 if !viewModel.companySuggestions.isEmpty {
+                                    ScrollView {
                                     VStack(alignment: .leading, spacing: 0) {
                                         ForEach(viewModel.companySuggestions) { company in
                                             Button {
@@ -100,7 +101,9 @@ struct AddContactView: View {
                                         }
                                     }
                                     .background(AppColors.cardBackground)
-                                    .cornerRadius(AppCornerRadius.medium)
+                                    .cornerRadius(AppCornerRadius.large)
+                                    }
+                                    .frame(maxHeight: 200)
                                     .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
 
@@ -165,10 +168,11 @@ struct AddContactView: View {
                                 .foregroundColor(AppColors.textPrimary)
                                 .frame(minHeight: 100)
                                 .padding(AppSpacing.sm)
+                                .scrollContentBackground(.hidden)
                                 .background(AppColors.cardBackground)
-                                .cornerRadius(AppCornerRadius.medium)
+                                .cornerRadius(AppCornerRadius.large)
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                                    RoundedRectangle(cornerRadius: AppCornerRadius.large)
                                         .stroke(AppColors.divider, lineWidth: 1)
                                 )
                         }
@@ -229,9 +233,9 @@ struct AddContactView: View {
                             .foregroundColor(AppColors.textPrimary)
                     }
                     .padding(AppSpacing.xl)
-                    .background(AppColors.cardBackground)
+                    .background(AppColors.overlayBackground)
                     .cornerRadius(AppCornerRadius.large)
-                    .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                    .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
                 }
             }
             .onChange(of: viewModel.didSaveSuccessfully) { _, success in
@@ -264,7 +268,10 @@ struct AddContactView: View {
             .padding(AppSpacing.md)
             .background(AppColors.cardBackground)
             .cornerRadius(AppCornerRadius.large)
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                    .stroke(AppColors.divider, lineWidth: 1)
+            )
         }
     }
 
@@ -292,8 +299,8 @@ struct AddContactView: View {
             }
         }
         .padding(AppSpacing.md)
-        .background(AppColors.searchBackground)
-        .cornerRadius(AppCornerRadius.medium)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.large)
     }
 }
 

@@ -71,8 +71,9 @@ struct EditContactView: View {
                             TextEditor(text: $notes)
                                 .frame(minHeight: 80)
                                 .padding(AppSpacing.sm)
-                                .background(AppColors.searchBackground)
-                                .cornerRadius(AppCornerRadius.medium)
+                                .scrollContentBackground(.hidden)
+                                .background(AppColors.cardBackground)
+                                .cornerRadius(AppCornerRadius.large)
                                 .foregroundColor(AppColors.textPrimary)
                         }
 
@@ -112,8 +113,8 @@ struct EditContactView: View {
                         .overlay {
                             ProgressView("Saving...")
                                 .padding(AppSpacing.lg)
-                                .background(AppColors.cardBackground)
-                                .cornerRadius(AppCornerRadius.medium)
+                                .background(AppColors.overlayBackground)
+                                .cornerRadius(AppCornerRadius.large)
                         }
                 }
             }
@@ -212,7 +213,7 @@ struct EditContactView: View {
                 .foregroundColor(AppColors.textPrimary)
         }
         .padding(AppSpacing.md)
-        .background(AppColors.searchBackground)
-        .cornerRadius(AppCornerRadius.medium)
+        .background(AppColors.cardBackground)
+        .cornerRadius(AppCornerRadius.large)
     }
 }

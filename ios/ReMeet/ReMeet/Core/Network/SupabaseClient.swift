@@ -16,6 +16,26 @@ nonisolated struct MeetingTimelineParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Company Update (excludes computed fields)
+
+private struct CompanyUpdate: Encodable {
+    let name: String
+    let industry: String?
+    let website: String?
+    let logoUrl: String?
+    let description: String?
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case industry
+        case website
+        case logoUrl = "logo_url"
+        case description
+        case updatedAt = "updated_at"
+    }
+}
+
 // MARK: - Contact Update (excludes joined fields)
 
 private struct ContactUpdate: Encodable {
@@ -160,7 +180,8 @@ final class SupabaseManager {
             password: password,
             data: [
                 "full_name": .string(fullName)
-            ]
+            ],
+            redirectTo: URL(string: "remeet://auth-callback")
         )
         return response
     }
@@ -485,11 +506,36 @@ final class SupabaseManager {
             .execute()
     }
 
+    // MARK: - Edge Function Warmup
+
+    /// Pre-warm Edge Functions to avoid cold start delay
+    func warmupEdgeFunctions() async {
+        guard let session = try? await client.auth.session else { return }
+
+        let functions = ["ocr-scan", "parse-card"]
+        for name in functions {
+            let functionURL = SupabaseConfig.supabaseURL
+                .appendingPathComponent("functions")
+                .appendingPathComponent("v1")
+                .appendingPathComponent(name)
+
+            var request = URLRequest(url: functionURL)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 10
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["warmup": true])
+
+            _ = try? await URLSession.shared.data(for: request)
+        }
+        print("🔥 Edge Functions warmed up")
+    }
+
     // MARK: - Company Methods
 
-    /// Create or find a company by name
+    /// Create or find a company by name (with fuzzy matching)
     func findOrCreateCompany(name: String) async throws -> Company {
-        // First, try to find existing company
+        // Step 1: Exact case-insensitive match
         let existingCompanies: [Company] = try await client
             .from("companies")
             .select()
@@ -502,7 +548,38 @@ final class SupabaseManager {
             return existing
         }
 
-        // Create new company
+        // Step 2: Fuzzy match using pg_trgm similarity
+        do {
+            struct SimilarCompany: Codable {
+                let id: UUID
+                let name: String
+                let similarity: Double
+            }
+
+            let result = try await client
+                .rpc("find_similar_company", params: ["search_name": name])
+                .execute()
+
+            let similar = try JSONDecoder().decode([SimilarCompany].self, from: result.data)
+
+            if let best = similar.first {
+                print("🏢 Fuzzy matched '\(name)' → '\(best.name)' (similarity: \(best.similarity))")
+                let matched: [Company] = try await client
+                    .from("companies")
+                    .select()
+                    .eq("id", value: best.id.uuidString)
+                    .limit(1)
+                    .execute()
+                    .value
+                if let company = matched.first {
+                    return company
+                }
+            }
+        } catch {
+            print("🏢 Fuzzy match failed, creating new: \(error.localizedDescription)")
+        }
+
+        // Step 3: Create new company
         let newCompany = Company(
             id: UUID(),
             name: name,
@@ -526,9 +603,17 @@ final class SupabaseManager {
 
     /// Update company
     func updateCompany(_ company: Company) async throws {
+        let update = CompanyUpdate(
+            name: company.name,
+            industry: company.industry,
+            website: company.website,
+            logoUrl: company.logoUrl,
+            description: company.description,
+            updatedAt: Date()
+        )
         try await client
             .from("companies")
-            .update(company)
+            .update(update)
             .eq("id", value: company.id.uuidString)
             .execute()
     }

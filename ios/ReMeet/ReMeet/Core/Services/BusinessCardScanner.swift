@@ -24,6 +24,7 @@ class BusinessCardScanner {
     struct ScanResult {
         var fullName: String?
         var title: String?
+        var department: String?
         var company: String?
         var phone: String?
         var email: String?
@@ -48,8 +49,15 @@ class BusinessCardScanner {
         // Step 2: Perform OCR using Supabase Edge Function (proxies Google Cloud Vision)
         let rawText = try await performOCR(on: croppedImage)
 
-        // Step 3: Parse the text to extract fields
-        var result = parseBusinessCardText(rawText)
+        // Step 3: Parse using AI (GPT-4o-mini), fallback to heuristic parsing
+        var result: ScanResult
+        do {
+            result = try await parseWithAI(text: rawText)
+            print("🤖 AI parsing succeeded")
+        } catch {
+            print("🤖 AI parsing failed, using heuristic fallback: \(error.localizedDescription)")
+            result = parseBusinessCardText(rawText)
+        }
         result.croppedImage = croppedImage
         result.rawText = rawText
 
@@ -202,9 +210,56 @@ class BusinessCardScanner {
         return text
     }
 
-    // MARK: - Text Parsing
+    // MARK: - AI-Based Parsing
 
-    /// Parse OCR text to extract business card fields
+    /// Parse OCR text using GPT-4o-mini via parse-card Edge Function
+    private func parseWithAI(text: String) async throws -> ScanResult {
+        guard let session = try? await supabase.client.auth.session else {
+            throw ScanError.authenticationRequired
+        }
+
+        let functionURL = SupabaseConfig.supabaseURL
+            .appendingPathComponent("functions")
+            .appendingPathComponent("v1")
+            .appendingPathComponent("parse-card")
+
+        var request = URLRequest(url: functionURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+
+        let requestBody: [String: Any] = ["text": text]
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw ScanError.apiError("AI parse failed")
+        }
+
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let success = json["success"] as? Bool, success,
+              let parsed = json["parsed"] as? [String: Any] else {
+            throw ScanError.apiError("Invalid AI response")
+        }
+
+        var result = ScanResult(rawText: text)
+        result.fullName = parsed["fullName"] as? String
+        result.title = parsed["title"] as? String
+        result.department = parsed["department"] as? String
+        result.company = parsed["company"] as? String
+        result.phone = parsed["phone"] as? String
+        result.email = parsed["email"] as? String
+        result.website = parsed["website"] as? String
+        result.address = parsed["address"] as? String
+        return result
+    }
+
+    // MARK: - Heuristic Text Parsing (Fallback)
+
+    /// Parse OCR text to extract business card fields (heuristic fallback)
     private func parseBusinessCardText(_ text: String) -> ScanResult {
         var result = ScanResult(rawText: text)
 

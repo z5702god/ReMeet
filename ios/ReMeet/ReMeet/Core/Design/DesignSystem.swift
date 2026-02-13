@@ -55,61 +55,81 @@ final class HapticManager {
 // MARK: - App Colors
 
 enum AppColors {
-    // Primary gradient (Monday.com style purple)
+    // Primary gradient (blue → purple glow)
     static let primaryGradient = LinearGradient(
-        colors: [Color(hex: "6C5CE7"), Color(hex: "A29BFE")],
+        colors: [Color(hex: "4A9FFF"), Color(hex: "8B7FFF")],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
-    // Header gradient (dark purple)
+    // Header gradient (deep navy)
     static let headerGradient = LinearGradient(
-        colors: [Color(hex: "2D3436"), Color(hex: "636E72")],
+        colors: [Color(hex: "0A0E27"), Color(hex: "1A1F3A")],
         startPoint: .top,
         endPoint: .bottom
     )
 
     // Accent colors for categories
-    static let accentBlue = Color(hex: "0984E3")
-    static let accentGreen = Color(hex: "00B894")
+    static let accentBlue = Color(hex: "4A9FFF")
+    static let accentGreen = Color(hex: "10B981")
     static let accentOrange = Color(hex: "FDCB6E")
     static let accentRed = Color(hex: "D63031")
-    static let accentPurple = Color(hex: "6C5CE7")
-    static let accentPink = Color(hex: "E84393")
+    static let accentPurple = Color(hex: "8B7FFF")
+    static let accentPink = Color(hex: "FF8FA3")
 
     // Adaptive colors for Light/Dark mode using dynamic provider
-    static let background = Color(light: Color(hex: "F5F6FA"), dark: Color(hex: "1A1A2E"))
-    static let cardBackground = Color(light: .white, dark: Color(hex: "2D2D44"))
+    static let background = Color(light: Color(hex: "F5F6FA"), dark: Color(hex: "0A0E27"))
+    static let cardBackground = Color(light: .white, dark: Color.white.opacity(0.03))
     static let textPrimary = Color(light: Color(hex: "2D3436"), dark: .white)
-    static let textSecondary = Color(light: Color(hex: "636E72"), dark: Color(hex: "A0A0B0"))
-    static let divider = Color(light: Color(hex: "DFE6E9"), dark: Color(hex: "3D3D5C"))
-    static let searchBackground = Color(light: Color(hex: "ECEEF1"), dark: Color(hex: "3D3D5C"))
-    static let inputBackground = Color(light: Color.white.opacity(0.2), dark: Color(hex: "3D3D5C"))
-    static let inputBorder = Color(light: Color.white.opacity(0.3), dark: Color(hex: "4D4D6C"))
+    static let textSecondary = Color(light: Color(hex: "636E72"), dark: Color(hex: "B8C5E0"))
+    static let textTertiary = Color(light: Color(hex: "8E8E93"), dark: Color(hex: "7B8CAE"))
+    static let divider = Color(light: Color(hex: "DFE6E9"), dark: Color.white.opacity(0.06))
+    static let searchBackground = Color(light: Color(hex: "ECEEF1"), dark: Color.white.opacity(0.06))
+    static let inputBackground = Color(light: Color.white.opacity(0.2), dark: Color.white.opacity(0.03))
+    static let inputBorder = Color(light: Color.white.opacity(0.3), dark: Color(hex: "2A3555"))
+    static let overlayBackground = Color(light: .white, dark: Color(hex: "1E2749"))
+
+    // Glassmorphic card gradient (for elevated cards)
+    static let glassGradient = LinearGradient(
+        colors: [Color(hex: "4A9FFF").opacity(0.08), Color(hex: "8B5CF6").opacity(0.08)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    // Glow shadow colors
+    static let glowBlue = Color(hex: "4A9FFF").opacity(0.12)
+    static let glowPurple = Color(hex: "8B7FFF").opacity(0.12)
 
     // Auth screen gradient colors
-    static let authGradientStart = Color(light: Color(hex: "A29BFE").opacity(0.8), dark: Color(hex: "1A1A2E"))
-    static let authGradientEnd = Color(light: Color(hex: "6C5CE7").opacity(0.9), dark: Color(hex: "2D2D44"))
+    static let authGradientStart = Color(light: Color(hex: "4A9FFF").opacity(0.8), dark: Color(hex: "0A0E27"))
+    static let authGradientEnd = Color(light: Color(hex: "8B7FFF").opacity(0.9), dark: Color(hex: "141B3C"))
 
     // Auth screen adaptive gradient
     static func authGradient(colorScheme: ColorScheme) -> LinearGradient {
         LinearGradient(
             colors: colorScheme == .dark
-                ? [Color(hex: "1A1A2E"), Color(hex: "2D2D44")]
-                : [Color(hex: "A29BFE").opacity(0.8), Color(hex: "6C5CE7").opacity(0.9)],
+                ? [Color(hex: "0A0E27"), Color(hex: "141B3C")]
+                : [Color(hex: "4A9FFF").opacity(0.8), Color(hex: "8B7FFF").opacity(0.9)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
 
-    // Avatar gradient colors
+    // Screen background gradient
+    static let screenGradient = LinearGradient(
+        colors: [Color(hex: "0A0E27"), Color(hex: "1A1F3A")],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
+    // Avatar gradient colors (vibrant pairs matching design)
     static let avatarGradients: [[Color]] = [
-        [Color(hex: "6C5CE7"), Color(hex: "A29BFE")],
-        [Color(hex: "0984E3"), Color(hex: "74B9FF")],
-        [Color(hex: "00B894"), Color(hex: "55EFC4")],
-        [Color(hex: "FDCB6E"), Color(hex: "FFEAA7")],
-        [Color(hex: "E84393"), Color(hex: "FD79A8")],
-        [Color(hex: "D63031"), Color(hex: "FF7675")]
+        [Color(hex: "4A9FFF"), Color(hex: "8B5CF6")],
+        [Color(hex: "EC4899"), Color(hex: "F97316")],
+        [Color(hex: "10B981"), Color(hex: "06B6D4")],
+        [Color(hex: "8B7FFF"), Color(hex: "EC4899")],
+        [Color(hex: "F97316"), Color(hex: "FDCB6E")],
+        [Color(hex: "06B6D4"), Color(hex: "4A9FFF")]
     ]
 
     static func avatarGradient(for name: String) -> LinearGradient {
@@ -120,6 +140,20 @@ enum AppColors {
             endPoint: .bottomTrailing
         )
     }
+
+    // Button gradient (blue → purple)
+    static let buttonGradient = LinearGradient(
+        colors: [Color(hex: "4A9FFF"), Color(hex: "8B5CF6")],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    // Green button gradient
+    static let greenButtonGradient = LinearGradient(
+        colors: [Color(hex: "10B981"), Color(hex: "06B6D4")],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 // MARK: - Color Extension
@@ -231,8 +265,11 @@ struct CardStyle: ViewModifier {
         content
             .padding(padding)
             .background(AppColors.cardBackground)
-            .cornerRadius(AppCornerRadius.medium)
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+            .cornerRadius(AppCornerRadius.large)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                    .stroke(AppColors.divider, lineWidth: 1)
+            )
     }
 }
 
@@ -251,9 +288,11 @@ struct SectionHeader: View {
 
     var body: some View {
         HStack {
-            Text(title)
-                .font(AppTypography.headline)
-                .foregroundColor(AppColors.textPrimary)
+            Text(title.uppercased())
+                .font(AppTypography.footnote)
+                .fontWeight(.semibold)
+                .foregroundColor(AppColors.textSecondary)
+                .tracking(0.5)
 
             Spacer()
 
@@ -262,8 +301,8 @@ struct SectionHeader: View {
                     HStack(spacing: 4) {
                         Text(label)
                             .font(AppTypography.subheadline)
-                        Image(systemName: "arrow.right")
-                            .font(.caption)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
                     }
                     .foregroundColor(AppColors.accentBlue)
                 }
@@ -287,9 +326,9 @@ struct FloatingActionButton: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
                 .frame(width: 56, height: 56)
-                .background(AppColors.accentBlue)
+                .background(AppColors.buttonGradient)
                 .clipShape(Circle())
-                .shadow(color: AppColors.accentBlue.opacity(0.4), radius: 10, x: 0, y: 4)
+                .shadow(color: Color(hex: "4A9FFF").opacity(0.4), radius: 16, x: 0, y: 4)
         }
     }
 }
@@ -320,7 +359,7 @@ struct AvatarView: View {
                 .frame(width: size, height: size)
 
             Text(initials)
-                .font(.system(size: size * 0.4, weight: .semibold))
+                .font(.system(size: size * 0.4, weight: .bold))
                 .foregroundColor(.white)
         }
     }
@@ -363,8 +402,9 @@ struct EmptyStateView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.vertical, AppSpacing.md)
-                    .background(AppColors.accentBlue)
+                    .background(AppColors.buttonGradient)
                     .cornerRadius(AppCornerRadius.large)
+                    .shadow(color: Color(hex: "4A9FFF").opacity(0.3), radius: 16, x: 0, y: 4)
                 }
                 .padding(.top, AppSpacing.md)
             }
@@ -385,7 +425,7 @@ struct SearchBarView: View {
                 .foregroundColor(AppColors.textSecondary)
 
             TextField(placeholder, text: $text)
-                .font(AppTypography.body)
+                .font(AppTypography.callout)
 
             if !text.isEmpty {
                 Button {
@@ -396,9 +436,10 @@ struct SearchBarView: View {
                 }
             }
         }
-        .padding(AppSpacing.md)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, 12)
         .background(AppColors.searchBackground)
-        .cornerRadius(AppCornerRadius.medium)
+        .cornerRadius(AppCornerRadius.full)
     }
 }
 
@@ -513,6 +554,7 @@ extension View {
 // MARK: - Skeleton Loading View
 
 struct SkeletonView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isAnimating = false
 
     var body: some View {
@@ -520,18 +562,16 @@ struct SkeletonView: View {
             Rectangle()
                 .fill(
                     LinearGradient(
-                        colors: [
-                            Color.gray.opacity(0.2),
-                            Color.gray.opacity(0.3),
-                            Color.gray.opacity(0.2)
-                        ],
+                        colors: colorScheme == .dark
+                            ? [Color.white.opacity(0.03), Color.white.opacity(0.08), Color.white.opacity(0.03)]
+                            : [Color.black.opacity(0.04), Color.black.opacity(0.08), Color.black.opacity(0.04)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .offset(x: isAnimating ? geometry.size.width : -geometry.size.width)
         }
-        .background(Color.gray.opacity(0.15))
+        .background(colorScheme == .dark ? AppColors.divider : Color.black.opacity(0.04))
         .onAppear {
             withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                 isAnimating = true
@@ -545,20 +585,20 @@ struct SkeletonContactRow: View {
         HStack(spacing: AppSpacing.md) {
             // Avatar skeleton
             Circle()
-                .fill(Color.gray.opacity(0.2))
+                .fill(AppColors.divider)
                 .frame(width: 50, height: 50)
                 .overlay(SkeletonView().clipShape(Circle()))
 
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 // Name skeleton
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(AppColors.divider)
                     .frame(width: 120, height: 16)
                     .overlay(SkeletonView().cornerRadius(4))
 
                 // Company skeleton
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(AppColors.divider)
                     .frame(width: 80, height: 12)
                     .overlay(SkeletonView().cornerRadius(4))
             }
@@ -567,7 +607,7 @@ struct SkeletonContactRow: View {
         }
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
+        .cornerRadius(AppCornerRadius.large)
     }
 }
 
@@ -575,21 +615,21 @@ struct SkeletonCompanyRow: View {
     var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Logo skeleton
-            RoundedRectangle(cornerRadius: AppCornerRadius.small)
-                .fill(Color.gray.opacity(0.2))
+            RoundedRectangle(cornerRadius: 12)
+                .fill(AppColors.divider)
                 .frame(width: 50, height: 50)
-                .overlay(SkeletonView().cornerRadius(AppCornerRadius.small))
+                .overlay(SkeletonView().cornerRadius(12))
 
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
                 // Company name
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(AppColors.divider)
                     .frame(width: 140, height: 16)
                     .overlay(SkeletonView().cornerRadius(4))
 
                 // Industry
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(AppColors.divider)
                     .frame(width: 100, height: 12)
                     .overlay(SkeletonView().cornerRadius(4))
             }
@@ -598,13 +638,13 @@ struct SkeletonCompanyRow: View {
 
             // Contact count
             RoundedRectangle(cornerRadius: 4)
-                .fill(Color.gray.opacity(0.2))
+                .fill(AppColors.divider)
                 .frame(width: 30, height: 14)
                 .overlay(SkeletonView().cornerRadius(4))
         }
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
+        .cornerRadius(AppCornerRadius.large)
     }
 }
 
@@ -640,11 +680,11 @@ struct SecureTextFieldWithToggle: View {
             .accessibilityLabel(isSecure ? "Show password" : "Hide password")
         }
         .padding(AppSpacing.md)
-        .background(Color.white.opacity(0.15))
-        .cornerRadius(AppCornerRadius.medium)
+        .background(Color.white.opacity(0.06))
+        .cornerRadius(AppCornerRadius.large)
         .overlay(
-            RoundedRectangle(cornerRadius: AppCornerRadius.medium)
-                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
     }
 }
@@ -693,9 +733,9 @@ struct LoadingButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppSpacing.md)
-            .background(isEnabled && !isLoading ? Color.white : Color.white.opacity(0.5))
-            .foregroundColor(AppColors.accentPurple)
-            .cornerRadius(AppCornerRadius.medium)
+            .background(isEnabled && !isLoading ? Color.white : Color.white.opacity(0.35))
+            .foregroundColor(Color(hex: "0A0E27"))
+            .cornerRadius(AppCornerRadius.large)
         }
         .disabled(!isEnabled || isLoading)
         .accessibilityLabel(isLoading ? "Loading, please wait" : title)

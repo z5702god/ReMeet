@@ -2,7 +2,8 @@ import SwiftUI
 
 struct CompanyDetailView: View {
 
-    let companyWithContacts: CompanyWithContacts
+    @State var companyWithContacts: CompanyWithContacts
+    @State private var showingEditSheet = false
 
     var body: some View {
         ZStack {
@@ -57,6 +58,25 @@ struct CompanyDetailView: View {
         }
         .navigationTitle(companyWithContacts.company.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingEditSheet = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundColor(AppColors.accentBlue)
+                }
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            EditCompanyView(company: companyWithContacts.company) { updatedCompany in
+                companyWithContacts = CompanyWithContacts(
+                    company: updatedCompany,
+                    contacts: companyWithContacts.contacts,
+                    lastInteraction: companyWithContacts.lastInteraction
+                )
+            }
+        }
     }
 
     // MARK: - Company Header

@@ -17,7 +17,7 @@ struct ReMeetLogo: View {
                 RoundedRectangle(cornerRadius: iconSize * 0.06)
                     .fill(AppColors.primaryGradient)
                     .frame(width: cardWidth, height: cardHeight)
-                    .shadow(color: Color(hex: "6C5CE7").opacity(0.3), radius: 4, x: 0, y: 2)
+                    .shadow(color: Color(hex: "4A9FFF").opacity(0.3), radius: 4, x: 0, y: 2)
 
                 // Card lines (text representation)
                 VStack(alignment: .leading, spacing: cardHeight * 0.12) {
@@ -62,7 +62,7 @@ struct CircularArrow: View {
                 .trim(from: 0.15, to: 0.85)
                 .stroke(
                     LinearGradient(
-                        colors: [Color(hex: "6C5CE7"), Color(hex: "A29BFE")],
+                        colors: [Color(hex: "4A9FFF"), Color(hex: "8B7FFF")],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
@@ -75,7 +75,7 @@ struct CircularArrow: View {
             Triangle()
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "6C5CE7"), Color(hex: "A29BFE")],
+                        colors: [Color(hex: "4A9FFF"), Color(hex: "8B7FFF")],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -109,7 +109,7 @@ struct ReMeetAppIcon: View {
             RoundedRectangle(cornerRadius: size * 0.22)
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "A29BFE"), Color(hex: "6C5CE7")],
+                        colors: [Color(hex: "4A9FFF"), Color(hex: "8B7FFF")],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -135,7 +135,7 @@ struct LogoView_Previews: PreviewProvider {
                     .font(.caption)
             }
             .padding(40)
-            .background(Color(hex: "6C5CE7").opacity(0.8))
+            .background(Color(hex: "0A0E27"))
             .cornerRadius(20)
 
             // App Icon

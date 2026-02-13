@@ -55,6 +55,10 @@ struct CameraView: View {
                 if !isSimulator {
                     viewModel.startSession()
                 }
+                // Pre-warm Edge Functions to reduce OCR latency
+                Task {
+                    await SupabaseManager.shared.warmupEdgeFunctions()
+                }
             }
             .onDisappear {
                 if !isSimulator {
@@ -64,6 +68,7 @@ struct CameraView: View {
             .fullScreenCover(isPresented: $showBatchEdit) {
                 BatchEditView(
                     cards: viewModel.finishBatch(),
+                    preloadedOCRResults: viewModel.ocrResults,
                     onComplete: {
                         viewModel.clearBatch()
                         showBatchEdit = false

@@ -61,8 +61,8 @@ struct CompaniesListView: View {
                     }
                 }
                 .padding(AppSpacing.sm)
-                .background(AppColors.searchBackground)
-                .cornerRadius(AppCornerRadius.medium)
+                .background(AppColors.divider)
+                .cornerRadius(AppCornerRadius.full)
             }
             .listRowBackground(Color.clear)
 
@@ -250,13 +250,13 @@ struct CompanyRowView: View {
                     )
                     .overlay(
                         Circle()
-                            .stroke(AppColors.cardBackground, lineWidth: 2)
+                            .stroke(AppColors.background, lineWidth: 2)
                     )
             }
 
             if companyWithContacts.contactCount > 3 {
                 Circle()
-                    .fill(AppColors.searchBackground)
+                    .fill(AppColors.divider)
                     .frame(width: 28, height: 28)
                     .overlay(
                         Text("+\(companyWithContacts.contactCount - 3)")
@@ -265,7 +265,7 @@ struct CompanyRowView: View {
                     )
                     .overlay(
                         Circle()
-                            .stroke(AppColors.cardBackground, lineWidth: 2)
+                            .stroke(AppColors.background, lineWidth: 2)
                     )
             }
         }

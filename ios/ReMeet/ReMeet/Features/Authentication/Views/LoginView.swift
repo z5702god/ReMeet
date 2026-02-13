@@ -119,8 +119,12 @@ struct LoginView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(AppCornerRadius.medium)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(AppCornerRadius.large)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                )
                             }
                             .accessibleButton(label: "Sign up for a new account")
                         }
@@ -172,11 +176,11 @@ struct ReMeetTextFieldStyle: TextFieldStyle {
                 .foregroundColor(.white)
         }
         .padding()
-        .background(colorScheme == .dark ? AppColors.inputBackground : Color.white.opacity(0.2))
-        .cornerRadius(AppCornerRadius.medium)
+        .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color.white.opacity(0.2))
+        .cornerRadius(AppCornerRadius.large)
         .overlay(
-            RoundedRectangle(cornerRadius: AppCornerRadius.medium)
-                .stroke(colorScheme == .dark ? AppColors.inputBorder : Color.white.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.3), lineWidth: 1)
         )
     }
 }

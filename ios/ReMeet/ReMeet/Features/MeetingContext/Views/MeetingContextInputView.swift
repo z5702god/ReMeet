@@ -235,9 +235,9 @@ struct MeetingContextInputView: View {
                 imageUrl: url,
                 imageFrontUrl: url,
                 imageBackUrl: nil,
-                ocrStatus: .pending,
+                ocrStatus: .completed,
                 ocrRawData: nil,
-                ocrProcessedAt: nil,
+                ocrProcessedAt: Date(),
                 createdAt: Date(),
                 updatedAt: Date()
             )

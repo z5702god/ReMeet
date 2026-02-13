@@ -46,37 +46,32 @@ struct TimelineView: View {
         }
     }
 
-    // MARK: - Timeline Scroll View
+    // MARK: - Grouped Timeline Scroll View
 
     private var timelineScrollView: some View {
-        let monthContacts = viewModel.contactsForSelectedMonth
+        let grouped = viewModel.contactsGroupedByDay
 
         return ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: []) {
-                ForEach(monthContacts.indices, id: \.self) { index in
-                    let contact = monthContacts[index]
-                    let isLast = index == monthContacts.count - 1
-                    let isFirstOfDay = isFirstContactOfDay(at: index, in: monthContacts)
-
-                    NavigationLink {
-                        ContactDetailView(contact: contact)
-                    } label: {
-                        TimelineRowView(
-                            contact: contact,
-                            showDate: isFirstOfDay,
-                            isLast: isLast,
-                            isToday: viewModel.isToday(contact.createdAt)
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                ForEach(grouped, id: \.date) { group in
+                    Section {
+                        ForEach(group.contacts) { contact in
+                            NavigationLink {
+                                ContactDetailView(contact: contact)
+                            } label: {
+                                TimelineContactRow(contact: contact)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } header: {
+                        TimelineDateHeader(
+                            date: group.date,
+                            count: group.contacts.count,
+                            isToday: viewModel.isToday(group.date)
                         )
                     }
-                    .buttonStyle(.plain)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                    .animation(
-                        .easeOut(duration: 0.3).delay(Double(index) * 0.05),
-                        value: monthContacts.count
-                    )
                 }
             }
-            .padding(.vertical, AppSpacing.md)
             .opacity(contentOpacity)
             .onAppear {
                 withAnimation(.easeOut(duration: 0.4)) {
@@ -108,15 +103,6 @@ struct TimelineView: View {
 
             Spacer()
         }
-    }
-
-    // MARK: - Helper
-
-    private func isFirstContactOfDay(at index: Int, in contacts: [Contact]) -> Bool {
-        guard index > 0, index < contacts.count else { return true }
-        let contact = contacts[index]
-        let previousContact = contacts[index - 1]
-        return !Calendar.current.isDate(contact.createdAt, inSameDayAs: previousContact.createdAt)
     }
 }
 
@@ -157,87 +143,80 @@ struct MonthSelectorView: View {
         }
         .padding(.horizontal, AppSpacing.sm)
         .padding(.vertical, AppSpacing.sm)
-        .background(AppColors.cardBackground)
+        .background(AppColors.background)
     }
 }
 
-// MARK: - Timeline Row View
+// MARK: - Timeline Date Header (Pinned Section Header)
 
-struct TimelineRowView: View {
+struct TimelineDateHeader: View {
 
-    let contact: Contact
-    let showDate: Bool
-    let isLast: Bool
+    let date: Date
+    let count: Int
     let isToday: Bool
 
     private let calendar = Calendar.current
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            // Left: Date column
-            dateColumn
-                .frame(width: 50)
+        HStack(alignment: .center, spacing: AppSpacing.sm) {
+            // Day number badge
+            Text("\(calendar.component(.day, from: date))")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(isToday ? .white : AppColors.textPrimary)
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(isToday ? AppColors.accentBlue : Color.clear)
+                )
 
-            // Middle: Timeline line with dot
-            timelineColumn
-                .frame(width: 30)
-
-            // Right: Contact card
-            contactCard
-                .padding(.trailing, AppSpacing.md)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.leading, AppSpacing.md)
-    }
-
-    // MARK: - Date Column
-
-    private var dateColumn: some View {
-        VStack {
-            if showDate {
-                Text("\(calendar.component(.day, from: contact.createdAt))")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(dayOfWeekString)
+                    .font(AppTypography.subheadline)
+                    .fontWeight(.semibold)
                     .foregroundColor(isToday ? AppColors.accentBlue : AppColors.textPrimary)
 
-                Text(weekdayString)
+                Text(fullDateString)
                     .font(AppTypography.caption)
                     .foregroundColor(AppColors.textSecondary)
             }
+
+            Spacer()
+
+            Text("\(count)")
+                .font(AppTypography.caption)
+                .fontWeight(.medium)
+                .foregroundColor(AppColors.textSecondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(AppColors.divider)
+                .clipShape(Capsule())
         }
-        .frame(height: 80, alignment: .top)
-        .padding(.top, AppSpacing.xs)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.sm)
+        .background(AppColors.background.opacity(0.95))
+        .background(.ultraThinMaterial)
     }
 
-    private var weekdayString: String {
+    private var dayOfWeekString: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: contact.createdAt)
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date)
     }
 
-    // MARK: - Timeline Column
-
-    private var timelineColumn: some View {
-        VStack(spacing: 0) {
-            // Dot
-            Circle()
-                .fill(isToday ? AppColors.accentBlue : AppColors.textSecondary.opacity(0.5))
-                .frame(width: 12, height: 12)
-                .padding(.top, AppSpacing.sm)
-
-            // Vertical line
-            if !isLast {
-                Rectangle()
-                    .fill(AppColors.divider)
-                    .frame(width: 2)
-                    .frame(maxHeight: .infinity)
-            }
-        }
+    private var fullDateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: date)
     }
+}
 
-    // MARK: - Contact Card
+// MARK: - Timeline Contact Row (Full-Width Card)
 
-    private var contactCard: some View {
+struct TimelineContactRow: View {
+
+    let contact: Contact
+
+    var body: some View {
         HStack(spacing: AppSpacing.md) {
             // Avatar
             AvatarView(name: contact.fullName, size: 44)
@@ -258,16 +237,26 @@ struct TimelineRowView: View {
 
             Spacer()
 
-            // Chevron
+            // Time added
+            Text(timeString)
+                .font(AppTypography.caption)
+                .foregroundColor(AppColors.textSecondary)
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(AppColors.textSecondary.opacity(0.5))
         }
         .padding(AppSpacing.md)
         .background(AppColors.cardBackground)
-        .cornerRadius(AppCornerRadius.medium)
-        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
-        .frame(minHeight: 70)
+        .cornerRadius(AppCornerRadius.large)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.xs)
+    }
+
+    private var timeString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: contact.createdAt)
     }
 }
 
